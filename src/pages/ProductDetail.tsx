@@ -359,6 +359,38 @@ const ProductDetail = () => {
         initialIndex={activeImg}
         productTitle={product.nome}
       />
+
+      {/* JSON-LD Schema para o Produto (Google Search SEO Moçambique) */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "Product",
+            "name": product.nome,
+            "image": gallery.length > 0 ? gallery : [product.imagem_url || "https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?w=600"],
+            "description": product.descricao || `Compre ${product.nome} em lote com preços de atacado. Lucro estimado para revenda em Moçambique.`,
+            "sku": product.codigo || product.id,
+            "brand": {
+              "@type": "Brand",
+              "name": "Translite Atacado"
+            },
+            "offers": {
+              "@type": "Offer",
+              "url": typeof window !== "undefined" ? window.location.href : `https://translite.co.mz/produto/${product.id}`,
+              "priceCurrency": "MZN",
+              "price": product.preco_lote,
+              "priceValidUntil": "2027-12-31",
+              "itemCondition": "https://schema.org/NewCondition",
+              "availability": "https://schema.org/InStock",
+              "seller": {
+                "@type": "Organization",
+                "name": "Translite Solutions, Lda — Atacado Moçambique"
+              }
+            }
+          })
+        }}
+      />
     </div>
   );
 };

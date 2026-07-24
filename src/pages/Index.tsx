@@ -258,6 +258,58 @@ const Index = () => {
         )}
       </main>
 
+      {/* JSON-LD Schemas para SEO no Google Search (Moçambique) */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "Organization",
+            "name": "Translite Atacado",
+            "alternateName": "Translite Solutions, Lda",
+            "url": "https://translite.co.mz",
+            "logo": "https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?w=200",
+            "description": "Plataforma de atacado e distribuição de produtos em lote para revendedores em Moçambique.",
+            "address": {
+              "@type": "PostalAddress",
+              "addressCountry": "MZ",
+              "addressLocality": "Maputo"
+            },
+            "contactPoint": {
+              "@type": "ContactPoint",
+              "telephone": "+258840000000",
+              "contactType": "sales",
+              "areaServed": "MZ"
+            }
+          })
+        }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "ItemList",
+            "name": "Catálogo de Produtos em Atacado — Moçambique",
+            "itemListElement": filteredAndSorted.slice(0, 20).map((product, index) => ({
+              "@type": "ListItem",
+              "position": index + 1,
+              "item": {
+                "@type": "Product",
+                "name": product.nome,
+                "image": product.imagem_url,
+                "offers": {
+                  "@type": "Offer",
+                  "priceCurrency": "MZN",
+                  "price": product.preco_lote,
+                  "availability": "https://schema.org/InStock"
+                }
+              }
+            }))
+          })
+        }}
+      />
+
       <footer className="border-t border-border/50 py-6 mt-8 bg-muted/20 text-xs">
         <div className="container max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3 text-muted-foreground px-3 sm:px-6">
           <p>© {new Date().getFullYear()} Translite Solutions, Lda — Atacado Moçambique</p>

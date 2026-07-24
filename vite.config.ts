@@ -9,6 +9,41 @@ export default defineConfig({
     VitePWA({
       registerType: "autoUpdate",
       injectRegister: "auto",
+      includeAssets: ["favicon.ico", "favicon.png", "robots.txt", "translite-logo.png"],
+      manifest: {
+        name: "Translite Atacado — Lotes Moçambique",
+        short_name: "Translite",
+        description: "Catálogo de produtos em lote e atacado para revendedores em Moçambique.",
+        theme_color: "#0f172a",
+        background_color: "#ffffff",
+        display: "standalone",
+        orientation: "portrait",
+        start_url: "/",
+        scope: "/",
+        icons: [
+          {
+            src: "/translite-logo-sm.png",
+            sizes: "192x192",
+            type: "image/png",
+            purpose: "any"
+          },
+          {
+            src: "/translite-logo.png",
+            sizes: "512x512",
+            type: "image/png",
+            purpose: "any"
+          },
+          {
+            src: "/translite-logo.png",
+            sizes: "512x512",
+            type: "image/png",
+            purpose: "maskable"
+          }
+        ]
+      },
+      workbox: {
+        globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"]
+      }
     }),
   ],
   resolve: {
