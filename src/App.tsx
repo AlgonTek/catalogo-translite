@@ -20,7 +20,7 @@ const App = () => (
       <QuoteCartProvider>
         <Toaster />
         <Sonner />
-        <BrowserRouter>
+        <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
           <div className="pb-16 sm:pb-0 min-h-screen flex flex-col bg-background text-foreground">
             <Routes>
               <Route path="/" element={<Index />} />
