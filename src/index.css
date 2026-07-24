@@ -1,0 +1,123 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* B2B Atacado — Design System (vibrante, mobile-first) */
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222 47% 11%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+
+    /* Marca Translite: azul-marinho institucional */
+    --primary: 222 51% 24%;
+    --primary-foreground: 0 0% 100%;
+    --primary-glow: 222 60% 38%;
+
+    /* Secundária: verde-oliva Translite */
+    --secondary: 85 40% 40%;
+    --secondary-foreground: 0 0% 100%;
+
+    --muted: 220 20% 96%;
+    --muted-foreground: 222 14% 38%;
+
+    /* Accent: verde-oliva claro */
+    --accent: 85 45% 50%;
+    --accent-foreground: 0 0% 100%;
+
+    /* WhatsApp green */
+    --whatsapp: 142 70% 45%;
+    --whatsapp-foreground: 0 0% 100%;
+
+    /* Lucro / sucesso */
+    --profit: 142 71% 38%;
+    --profit-foreground: 0 0% 100%;
+
+    /* Demanda */
+    --demand-high: 0 84% 55%;
+    --demand-medium: 38 95% 52%;
+    --demand-low: 215 14% 55%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 220 15% 90%;
+    --input: 220 15% 90%;
+    --ring: 222 51% 24%;
+
+    --radius: 0.75rem;
+
+    /* Gradientes Translite */
+    --gradient-primary: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--primary-glow)) 100%);
+    --gradient-hero: linear-gradient(135deg, hsl(222 51% 20%) 0%, hsl(85 40% 38%) 100%);
+    --gradient-accent: linear-gradient(135deg, hsl(var(--secondary)) 0%, hsl(var(--accent)) 100%);
+    --gradient-card: linear-gradient(180deg, hsl(0 0% 100%) 0%, hsl(220 20% 98%) 100%);
+
+    /* Sombras */
+    --shadow-soft: 0 2px 12px -4px hsl(222 51% 24% / 0.08);
+    --shadow-elevated: 0 12px 32px -12px hsl(222 51% 24% / 0.25);
+    --shadow-glow: 0 0 40px hsl(var(--primary-glow) / 0.35);
+
+    --transition-base: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+
+    --sidebar-background: 0 0% 98%;
+    --sidebar-foreground: 240 5.3% 26.1%;
+    --sidebar-primary: 240 5.9% 10%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 240 4.8% 95.9%;
+    --sidebar-accent-foreground: 240 5.9% 10%;
+    --sidebar-border: 220 13% 91%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+
+  .dark {
+    --background: 222 47% 8%;
+    --foreground: 30 20% 96%;
+    --card: 222 47% 11%;
+    --card-foreground: 30 20% 96%;
+    --popover: 222 47% 11%;
+    --popover-foreground: 30 20% 96%;
+    --primary: 18 95% 58%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 222 40% 18%;
+    --secondary-foreground: 30 20% 96%;
+    --muted: 222 30% 16%;
+    --muted-foreground: 215 20% 70%;
+    --accent: 45 100% 55%;
+    --accent-foreground: 222 47% 11%;
+    --destructive: 0 62% 45%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 222 30% 20%;
+    --input: 222 30% 20%;
+    --ring: 18 95% 58%;
+  }
+}
+
+@layer base {
+  * { @apply border-border; }
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "cv11", "ss01";
+    -webkit-font-smoothing: antialiased;
+  }
+  h1, h2, h3, h4 { @apply font-bold tracking-tight; }
+}
+
+@layer utilities {
+  .gradient-primary { background: var(--gradient-primary); }
+  .gradient-hero { background: var(--gradient-hero); }
+  .gradient-accent { background: var(--gradient-accent); }
+  .gradient-card { background: var(--gradient-card); }
+  .shadow-soft { box-shadow: var(--shadow-soft); }
+  .shadow-elevated { box-shadow: var(--shadow-elevated); }
+  .shadow-glow { box-shadow: var(--shadow-glow); }
+  .transition-base { transition: var(--transition-base); }
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+}

@@ -1,0 +1,8 @@
+{
+  "name": "Translite Solutions — Catálogo Digital B2B",
+  "description": "Catálogo digital da Translite Solutions, Lda. Veja produtos e peça pelo WhatsApp em 1 clique. Soluções multidisciplinares em Moçambique.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

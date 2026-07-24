@@ -1,0 +1,245 @@
+import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+import { SiteHeader } from "@/components/SiteHeader";
+import { useAuth } from "@/hooks/useAuth";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Plus, Pencil, Trash2, LogOut, Package, Search, ChevronLeft, ChevronRight, DownloadCloud, Sparkles } from "lucide-react";
+import { toast } from "sonner";
+import type { Product } from "@/types/product";
+import { ProductForm } from "@/components/admin/ProductForm";
+import { formatCurrency } from "@/lib/whatsapp";
+import { MOCK_PRODUCTS } from "@/data/fallbackProducts";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+
+const Admin = () => {
+  const navigate = useNavigate();
+  const { session, isAdmin, loading } = useAuth();
+  const [products, setProducts] = useState<Product[]>([]);
+  const [listLoading, setListLoading] = useState(true);
+  const [editing, setEditing] = useState<Product | null>(null);
+  const [creating, setCreating] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 6;
+  useEffect(() => { document.title = "Admin — AtacadoPro"; }, []);
+
+  useEffect(() => {
+    if (loading) return;
+    if (!session) { navigate("/auth", { replace: true }); return; }
+    if (!isAdmin) { toast.error("Acesso restrito a administradores"); navigate("/", { replace: true }); return; }
+    loadProducts();
+  }, [loading, session, isAdmin, navigate]);
+
+  async function loadProducts() {
+    setListLoading(true);
+    const { data, error } = await supabase.from("products").select("*").order("created_at", { ascending: false });
+    if (error) toast.error("Erro ao carregar");
+    else setProducts((data ?? []) as Product[]);
+    setListLoading(false);
+  }
+
+  async function handleDelete(id: string) {
+    const { error } = await supabase.from("products").delete().eq("id", id);
+    if (error) toast.error("Erro ao excluir");
+    else { toast.success("Produto excluído"); loadProducts(); }
+    setDeletingId(null);
+  }
+
+  async function handleSignOut() {
+    await supabase.auth.signOut();
+    navigate("/");
+  }
+
+  async function handleSeedProducts() {
+    setListLoading(true);
+    try {
+      const { error } = await supabase.from("products").upsert(MOCK_PRODUCTS, { onConflict: "id" });
+      if (error) {
+        toast.error("Erro ao popular banco de dados: " + error.message);
+      } else {
+        toast.success("Produtos padrão carregados no Supabase com sucesso!");
+        await loadProducts();
+      }
+    } catch (e) {
+      const err = e as Error;
+      toast.error("Erro ao sincronizar produtos: " + (err?.message || "Erro desconhecido"));
+    } finally {
+      setListLoading(false);
+    }
+  }
+
+  const filtered = useMemo(() => {
+    const t = search.trim().toLowerCase();
+    if (!t) return products;
+    return products.filter((p) =>
+      p.nome.toLowerCase().includes(t) ||
+      p.categoria.toLowerCase().includes(t) ||
+      (p.codigo ?? "").toLowerCase().includes(t)
+    );
+  }, [products, search]);
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages);
+  const paginated = useMemo(
+    () => filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE),
+    [filtered, currentPage]
+  );
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background">
+        <SiteHeader />
+        <div className="container py-8 space-y-4">
+          <Skeleton className="h-12 w-1/3" /><Skeleton className="h-32 w-full" />
+        </div>
+      </div>
+    );
+  }
+
+  if (creating || editing) {
+    return (
+      <div className="min-h-screen bg-background">
+        <SiteHeader />
+        <div className="container py-8 max-w-3xl">
+          <ProductForm
+            product={editing}
+            onSaved={() => { setCreating(false); setEditing(null); loadProducts(); }}
+            onCancel={() => { setCreating(false); setEditing(null); }}
+          />
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-background">
+      <SiteHeader />
+      <div className="container py-6 sm:py-8">
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
+          <div>
+            <h1 className="text-2xl sm:text-3xl">Painel Administrativo</h1>
+            <p className="text-sm text-muted-foreground">{products.length} produto(s) no catálogo</p>
+          </div>
+          <div className="flex gap-2 flex-wrap">
+            <Button variant="outline" size="sm" onClick={handleSeedProducts} title="Sincronizar produtos do catálogo para o Supabase">
+              <DownloadCloud className="w-4 h-4 mr-1 text-primary" /> Importar Produtos Padrão
+            </Button>
+            <Button variant="outline" size="sm" onClick={handleSignOut}>
+              <LogOut className="w-4 h-4 mr-1" /> Sair
+            </Button>
+            <Button onClick={() => setCreating(true)} className="gradient-primary text-primary-foreground border-0 font-bold">
+              <Plus className="w-4 h-4 mr-1" /> Novo produto
+            </Button>
+          </div>
+        </div>
+
+        <div className="relative mb-4">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input
+            value={search}
+            onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+            placeholder="Pesquisar por código, nome ou categoria…"
+            className="pl-9"
+            aria-label="Pesquisar produtos"
+          />
+        </div>
+
+        {listLoading ? (
+          <div className="space-y-3">{Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-24 w-full" />)}</div>
+        ) : products.length === 0 ? (
+          <Card className="p-10 text-center text-muted-foreground flex flex-col items-center justify-center space-y-3">
+            <Package className="w-12 h-12 stroke-1 opacity-50" />
+            <div>
+              <p className="font-bold text-foreground">Nenhum produto cadastrado na base de dados.</p>
+              <p className="text-xs text-muted-foreground mt-1">Deseja importar o catálogo inicial de produtos para o Supabase?</p>
+            </div>
+            <Button onClick={handleSeedProducts} variant="default" className="gradient-primary text-primary-foreground font-bold text-xs mt-2">
+              <DownloadCloud className="w-4 h-4 mr-1.5" /> Importar Catálogo Inicial
+            </Button>
+          </Card>
+        ) : filtered.length === 0 ? (
+          <Card className="p-10 text-center text-muted-foreground">
+            <Search className="w-10 h-10 mx-auto mb-3 opacity-50" />
+            <p>Nenhum produto corresponde à pesquisa.</p>
+          </Card>
+        ) : (
+          <>
+            <div className="grid gap-3">
+              {paginated.map((p) => (
+                <Card key={p.id} className="p-3 sm:p-4 flex gap-3 items-center hover:shadow-soft transition-base">
+                  <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-lg overflow-hidden bg-muted flex-shrink-0">
+                    {p.imagem_url ? (
+                      <img src={p.imagem_url} alt={p.nome} className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full grid place-items-center text-muted-foreground"><Package className="w-6 h-6" /></div>
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex flex-wrap gap-1.5 mb-1 items-center">
+                      <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-primary/10 text-primary">{p.codigo}</span>
+                      <Badge variant="outline" className="text-xs">{p.categoria}</Badge>
+                      {p.destaque && <Badge className="text-xs gradient-accent text-accent-foreground border-0">Destaque</Badge>}
+                      {p.mais_vendido && <Badge className="text-xs bg-secondary text-secondary-foreground border-0">Mais vendido</Badge>}
+                    </div>
+                    <h3 className="font-bold truncate">{p.nome}</h3>
+                    <p className="text-xs text-muted-foreground">
+                      Lote {formatCurrency(p.preco_lote)} · Lucro {formatCurrency(p.lucro_estimado)}
+                    </p>
+                  </div>
+                  <div className="flex gap-1">
+                    <Button size="icon" variant="ghost" onClick={() => setEditing(p)} aria-label="Editar">
+                      <Pencil className="w-4 h-4" />
+                    </Button>
+                    <Button size="icon" variant="ghost" onClick={() => setDeletingId(p.id)} aria-label="Excluir">
+                      <Trash2 className="w-4 h-4 text-destructive" />
+                    </Button>
+                  </div>
+                </Card>
+              ))}
+            </div>
+
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between gap-2 mt-5">
+                <Button variant="outline" size="sm" disabled={currentPage === 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>
+                  <ChevronLeft className="w-4 h-4 mr-1" /> Anterior
+                </Button>
+                <span className="text-xs text-muted-foreground">
+                  Página {currentPage} de {totalPages} · {filtered.length} produto(s)
+                </span>
+                <Button variant="outline" size="sm" disabled={currentPage === totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))}>
+                  Seguinte <ChevronRight className="w-4 h-4 ml-1" />
+                </Button>
+              </div>
+            )}
+          </>
+        )}
+      </div>
+
+      <AlertDialog open={!!deletingId} onOpenChange={(o) => !o && setDeletingId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir produto?</AlertDialogTitle>
+            <AlertDialogDescription>Esta ação não pode ser desfeita.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => deletingId && handleDelete(deletingId)}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >Excluir</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  );
+};
+
+export default Admin;
