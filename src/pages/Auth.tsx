@@ -39,9 +39,8 @@ const Auth = () => {
         }
       }
       toast.success("Autenticado com sucesso!");
-    } catch (err: unknown) {
-      const error = err as Error;
-      toast.error(error.message ?? "Erro ao realizar login");
+    } catch {
+      toast.error("Credenciais inválidas ou erro de autenticação.");
     } finally {
       setSubmitting(false);
     }
@@ -57,7 +56,7 @@ const Auth = () => {
           </div>
           <h1 className="text-2xl text-center mb-1 font-bold">Acesso Admin</h1>
           <p className="text-sm text-center text-muted-foreground mb-6">
-            Entre para gerenciar o catálogo no Cloud SQL
+            Acesso restrito à gestão do catálogo e pedidos
           </p>
 
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -76,7 +75,7 @@ const Auth = () => {
           </form>
 
           <p className="mt-4 text-xs text-center text-muted-foreground">
-            Acesso administrativo seguro com Cloud SQL e Firebase Auth.
+            Área protegida por autenticação criptografada.
           </p>
         </Card>
       </div>

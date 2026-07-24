@@ -10,6 +10,18 @@ async function startServer() {
   const app = express();
   const PORT = 3000;
 
+  // Security: Disable express fingerprinting header
+  app.disable("x-powered-by");
+
+  // Security: Global HTTP Headers Middleware
+  app.use((req, res, next) => {
+    res.setHeader("X-Content-Type-Options", "nosniff");
+    res.setHeader("X-Frame-Options", "SAMEORIGIN");
+    res.setHeader("X-XSS-Protection", "1; mode=block");
+    res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
+    next();
+  });
+
   app.use(express.json({ limit: "10mb" }));
 
   // API Routes
@@ -48,10 +60,10 @@ async function startServer() {
       if (fallback) return res.json(fallback);
       res.status(404).json({ error: "Produto não encontrado" });
     } catch (error: unknown) {
-      const err = error as Error;
+      console.error("Error fetching product by ID:", error);
       const fallback = MOCK_PRODUCTS.find((p) => p.id === req.params.id);
       if (fallback) return res.json(fallback);
-      res.status(500).json({ error: err.message });
+      res.status(500).json({ error: "Erro ao carregar o produto" });
     }
   });
 
@@ -59,6 +71,9 @@ async function startServer() {
   app.post("/api/products", async (req, res) => {
     try {
       const p = req.body;
+      if (!p || !p.nome || !p.preco_lote) {
+        return res.status(400).json({ error: "Dados do produto inválidos ou incompletos" });
+      }
       const id = p.id || `prod_${Date.now()}`;
       const newProduct = {
         id,
@@ -69,7 +84,7 @@ async function startServer() {
         preco_revenda: Number(p.preco_revenda),
         quantidade_minima: Number(p.quantidade_minima) || 1,
         imagem_url: p.imagem_url || null,
-        imagens: p.imagens || [],
+        imagens: Array.isArray(p.imagens) ? p.imagens : [],
         demanda: p.demanda || "media",
         destaque: Boolean(p.destaque),
         mais_vendido: Boolean(p.mais_vendido),
@@ -84,9 +99,8 @@ async function startServer() {
       }
       res.json(newProduct);
     } catch (error: unknown) {
-      const err = error as Error;
-      console.error("Error inserting product:", err);
-      res.status(500).json({ error: err.message });
+      console.error("Error inserting product:", error);
+      res.status(500).json({ error: "Erro interno ao salvar o produto" });
     }
   });
 
@@ -95,6 +109,9 @@ async function startServer() {
     try {
       const { id } = req.params;
       const p = req.body;
+      if (!p || !p.nome) {
+        return res.status(400).json({ error: "Dados inválidos para atualização" });
+      }
       const updatedProduct = {
         codigo: p.codigo || null,
         nome: p.nome,
@@ -103,7 +120,7 @@ async function startServer() {
         preco_revenda: Number(p.preco_revenda),
         quantidade_minima: Number(p.quantidade_minima) || 1,
         imagem_url: p.imagem_url || null,
-        imagens: p.imagens || [],
+        imagens: Array.isArray(p.imagens) ? p.imagens : [],
         demanda: p.demanda || "media",
         destaque: Boolean(p.destaque),
         mais_vendido: Boolean(p.mais_vendido),
@@ -115,9 +132,8 @@ async function startServer() {
       }
       res.json({ id, ...updatedProduct });
     } catch (error: unknown) {
-      const err = error as Error;
-      console.error("Error updating product:", err);
-      res.status(500).json({ error: err.message });
+      console.error("Error updating product:", error);
+      res.status(500).json({ error: "Erro interno ao atualizar produto" });
     }
   });
 
@@ -130,17 +146,16 @@ async function startServer() {
       }
       res.json({ success: true, id });
     } catch (error: unknown) {
-      const err = error as Error;
-      console.error("Error deleting product:", err);
-      res.status(500).json({ error: err.message });
+      console.error("Error deleting product:", error);
+      res.status(500).json({ error: "Erro ao excluir produto" });
     }
   });
 
-  // POST /api/seed (Seed Default Products to Cloud SQL)
+  // POST /api/seed (Seed Default Products)
   app.post("/api/seed", async (req, res) => {
     try {
       if (!process.env.SQL_HOST) {
-        return res.status(400).json({ error: "Banco Cloud SQL não configurado nas variáveis de ambiente ainda." });
+        return res.status(400).json({ error: "Serviço de banco de dados não disponível no momento." });
       }
       for (const item of MOCK_PRODUCTS) {
         await db.insert(products).values({
