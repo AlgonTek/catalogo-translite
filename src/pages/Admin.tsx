@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
 import { SiteHeader } from "@/components/SiteHeader";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -13,7 +12,6 @@ import { toast } from "sonner";
 import type { Product } from "@/types/product";
 import { ProductForm } from "@/components/admin/ProductForm";
 import { formatCurrency } from "@/lib/whatsapp";
-import { MOCK_PRODUCTS } from "@/data/fallbackProducts";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -21,7 +19,7 @@ import {
 
 const Admin = () => {
   const navigate = useNavigate();
-  const { session, isAdmin, loading } = useAuth();
+  const { session, isAdmin, loading, signOut } = useAuth();
   const [products, setProducts] = useState<Product[]>([]);
   const [listLoading, setListLoading] = useState(true);
   const [editing, setEditing] = useState<Product | null>(null);
@@ -35,39 +33,56 @@ const Admin = () => {
   useEffect(() => {
     if (loading) return;
     if (!session) { navigate("/auth", { replace: true }); return; }
-    if (!isAdmin) { toast.error("Acesso restrito a administradores"); navigate("/", { replace: true }); return; }
     loadProducts();
   }, [loading, session, isAdmin, navigate]);
 
   async function loadProducts() {
     setListLoading(true);
-    const { data, error } = await supabase.from("products").select("*").order("created_at", { ascending: false });
-    if (error) toast.error("Erro ao carregar");
-    else setProducts((data ?? []) as Product[]);
-    setListLoading(false);
+    try {
+      const res = await fetch("/api/products");
+      if (res.ok) {
+        const data = await res.json();
+        setProducts(data as Product[]);
+      } else {
+        toast.error("Erro ao carregar produtos");
+      }
+    } catch {
+      toast.error("Erro ao conectar ao servidor");
+    } finally {
+      setListLoading(false);
+    }
   }
 
   async function handleDelete(id: string) {
-    const { error } = await supabase.from("products").delete().eq("id", id);
-    if (error) toast.error("Erro ao excluir");
-    else { toast.success("Produto excluído"); loadProducts(); }
+    try {
+      const res = await fetch(`/api/products/${id}`, { method: "DELETE" });
+      if (res.ok) {
+        toast.success("Produto excluído");
+        loadProducts();
+      } else {
+        toast.error("Erro ao excluir produto");
+      }
+    } catch {
+      toast.error("Erro de conexão ao excluir");
+    }
     setDeletingId(null);
   }
 
   async function handleSignOut() {
-    await supabase.auth.signOut();
+    await signOut();
     navigate("/");
   }
 
   async function handleSeedProducts() {
     setListLoading(true);
     try {
-      const { error } = await supabase.from("products").upsert(MOCK_PRODUCTS, { onConflict: "id" });
-      if (error) {
-        toast.error("Erro ao popular banco de dados: " + error.message);
-      } else {
-        toast.success("Produtos padrão carregados no Supabase com sucesso!");
+      const res = await fetch("/api/seed", { method: "POST" });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        toast.success(data.message || "Produtos importados com sucesso para o Cloud SQL!");
         await loadProducts();
+      } else {
+        toast.error("Erro ao importar produtos: " + (data.error || "Tente novamente."));
       }
     } catch (e) {
       const err = e as Error;

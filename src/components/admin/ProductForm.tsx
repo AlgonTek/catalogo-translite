@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -65,16 +64,16 @@ export function ProductForm({ product, onSaved, onCancel }: Props) {
         if (file.size > MAX_SIZE) {
           throw new Error(`Imagem demasiado grande (máx 5MB): ${file.name}`);
         }
-        const path = `${crypto.randomUUID()}.${ext}`;
-        const { error: upErr } = await supabase.storage
-          .from("product-images")
-          .upload(path, file, { contentType: file.type, upsert: false });
-        if (upErr) throw upErr;
-        const { data } = supabase.storage.from("product-images").getPublicUrl(path);
-        urls.push(data.publicUrl);
+        const dataUrl = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result as string);
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+        urls.push(dataUrl);
       }
       set("imagens", [...form.imagens, ...urls].slice(0, MAX_IMAGES));
-      toast.success(urls.length > 1 ? `${urls.length} imagens enviadas` : "Imagem enviada");
+      toast.success(urls.length > 1 ? `${urls.length} imagens adicionadas` : "Imagem adicionada");
     } catch (e: unknown) {
       const err = e as Error;
       toast.error(err.message ?? "Erro ao enviar imagem");
@@ -108,10 +107,21 @@ export function ProductForm({ product, onSaved, onCancel }: Props) {
         mais_vendido: form.mais_vendido,
         demanda: form.demanda,
       };
-      const { error } = product
-        ? await supabase.from("products").update(payload).eq("id", product.id)
-        : await supabase.from("products").insert(payload);
-      if (error) throw error;
+
+      const url = product ? `/api/products/${product.id}` : "/api/products";
+      const method = product ? "PUT" : "POST";
+
+      const res = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || "Erro ao salvar no Cloud SQL");
+      }
+
       toast.success(product ? "Produto atualizado" : "Produto criado");
       onSaved();
     } catch (e: unknown) {

@@ -1,6 +1,5 @@
 import { useEffect, useState, useMemo, useRef, useCallback } from "react";
 import { Link } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
 import { ProductCard } from "@/components/ProductCard";
 import { SiteHeader } from "@/components/SiteHeader";
 import { Input } from "@/components/ui/input";
@@ -39,57 +38,38 @@ const Index = () => {
     document.title = "Loja Translite — Compre por lote, lucre mais";
   }, []);
 
-  const fetchPage = useCallback(async (page: number) => {
-    const from = page * PAGE_SIZE;
-    const to = from + PAGE_SIZE - 1;
+  const fetchProducts = useCallback(async () => {
     try {
-      const { data, error } = await supabase
-        .from("products")
-        .select("*")
-        .order("destaque", { ascending: false })
-        .order("created_at", { ascending: false })
-        .range(from, to);
-
-      if (error || !data || data.length === 0) {
-        if (page === 0) {
-          setHasMore(false);
-          return MOCK_PRODUCTS;
-        }
-        return [];
-      }
-      const list = data as Product[];
-      if (list.length < PAGE_SIZE) setHasMore(false);
-      return list;
+      const res = await fetch("/api/products");
+      if (!res.ok) throw new Error("Erro ao buscar produtos");
+      const data = await res.json();
+      setHasMore(false);
+      return data as Product[];
     } catch {
-      if (page === 0) {
-        setHasMore(false);
-        return MOCK_PRODUCTS;
-      }
-      return [];
+      setHasMore(false);
+      return MOCK_PRODUCTS;
     }
   }, []);
 
   useEffect(() => {
     (async () => {
       setLoading(true);
-      const first = await fetchPage(0);
-      setProducts(first);
+      const list = await fetchProducts();
+      setProducts(list);
       pageRef.current = 0;
       setLoading(false);
     })();
-  }, [fetchPage]);
+  }, [fetchProducts]);
 
   const loadMore = useCallback(async () => {
     if (loadingMore || !hasMore) return;
     setLoadingMore(true);
-    const next = pageRef.current + 1;
-    const list = await fetchPage(next);
+    const list = await fetchProducts();
     if (list.length > 0) {
-      setProducts((prev) => [...prev, ...list]);
-      pageRef.current = next;
+      setProducts(list);
     }
     setLoadingMore(false);
-  }, [fetchPage, hasMore, loadingMore]);
+  }, [fetchProducts, hasMore, loadingMore]);
 
   useEffect(() => {
     if (!hasMore || loading) return;

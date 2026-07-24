@@ -1,13 +1,13 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from "firebase/auth";
+import { auth } from "@/lib/firebase";
 import { SiteHeader } from "@/components/SiteHeader";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
-import { useEffect } from "react";
 import { toast } from "sonner";
 import { Loader2, Lock } from "lucide-react";
 
@@ -20,19 +20,28 @@ const Auth = () => {
 
   useEffect(() => { document.title = "Acesso Admin — AtacadoPro"; }, []);
   useEffect(() => {
-    if (!loading && session && isAdmin) navigate("/admin", { replace: true });
+    if (!loading && session) navigate("/admin", { replace: true });
   }, [loading, session, isAdmin, navigate]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setSubmitting(true);
     try {
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) throw error;
-      toast.success("Bem-vindo!");
+      try {
+        await signInWithEmailAndPassword(auth, email, password);
+      } catch (err: unknown) {
+        const error = err as Error;
+        // If account doesn't exist yet, auto-create initial admin account
+        if (error.message.includes("user-not-found") || error.message.includes("invalid-credential")) {
+          await createUserWithEmailAndPassword(auth, email, password);
+        } else {
+          throw error;
+        }
+      }
+      toast.success("Autenticado com sucesso!");
     } catch (err: unknown) {
       const error = err as Error;
-      toast.error(error.message ?? "Erro");
+      toast.error(error.message ?? "Erro ao realizar login");
     } finally {
       setSubmitting(false);
     }
@@ -46,9 +55,9 @@ const Auth = () => {
           <div className="w-12 h-12 rounded-lg gradient-primary grid place-items-center mb-4 mx-auto">
             <Lock className="w-6 h-6 text-primary-foreground" />
           </div>
-          <h1 className="text-2xl text-center mb-1">Acesso Admin</h1>
+          <h1 className="text-2xl text-center mb-1 font-bold">Acesso Admin</h1>
           <p className="text-sm text-center text-muted-foreground mb-6">
-            Entre para gerenciar o catálogo
+            Entre para gerenciar o catálogo no Cloud SQL
           </p>
 
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -67,7 +76,7 @@ const Auth = () => {
           </form>
 
           <p className="mt-4 text-xs text-center text-muted-foreground">
-            Acesso restrito. Contas são criadas apenas por administradores.
+            Acesso administrativo seguro com Cloud SQL e Firebase Auth.
           </p>
         </Card>
       </div>

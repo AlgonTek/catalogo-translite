@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
 import { SiteHeader } from "@/components/SiteHeader";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -51,13 +50,16 @@ const ProductDetail = () => {
     if (!id) return;
     (async () => {
       try {
-        const { data, error } = await supabase.from("products").select("*").eq("id", id).maybeSingle();
-        if (data) {
-          setProduct(data as Product);
-          setActiveImg(0);
-          setLoading(false);
-          document.title = `${data.nome} — Translite`;
-          return;
+        const res = await fetch(`/api/products/${id}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data) {
+            setProduct(data as Product);
+            setActiveImg(0);
+            setLoading(false);
+            document.title = `${data.nome} — Translite`;
+            return;
+          }
         }
       } catch {
         /* fallback below */
