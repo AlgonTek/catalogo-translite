@@ -1,32 +1,38 @@
 import { useState, useEffect, type ImgHTMLAttributes } from "react";
 import { cn } from "@/lib/utils";
 import { Package } from "lucide-react";
+import { getOptimizedImageUrl } from "@/lib/image";
 
 interface BlurImageProps extends ImgHTMLAttributes<HTMLImageElement> {
   source?: string | null;
   className?: string;
   alt?: string;
   objectFit?: "cover" | "contain";
+  targetWidth?: number;
 }
 
 /**
- * Componente de imagem resiliente com carregamento suave e tratamento de erro.
- * Garante visualização nítida das fotos dos produtos.
- */
+  * Componente de imagem resiliente e otimizado (WebP + Lazy Loading).
+  * Otimizado para conexões móveis de Moçambique.
+  */
 export function BlurImage({
   source,
   src,
   className,
   alt = "Foto do produto",
   objectFit = "cover",
+  targetWidth = 800,
   onLoad,
   onError,
+  loading = "lazy",
+  decoding = "async",
   ...imgProps
 }: BlurImageProps) {
   const [loaded, setLoaded] = useState(false);
   const [hasError, setHasError] = useState(false);
 
-  const imgSrc = src || source || "";
+  const rawSrc = src || source || "";
+  const imgSrc = getOptimizedImageUrl(rawSrc, { width: targetWidth, quality: 75, format: "webp" });
 
   useEffect(() => {
     setHasError(false);
@@ -51,6 +57,8 @@ export function BlurImage({
         {...imgProps}
         src={imgSrc}
         alt={alt}
+        loading={loading}
+        decoding={decoding}
         onLoad={(e) => {
           setLoaded(true);
           onLoad?.(e);
@@ -69,3 +77,4 @@ export function BlurImage({
     </div>
   );
 }
+

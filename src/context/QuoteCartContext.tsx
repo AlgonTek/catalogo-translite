@@ -24,23 +24,58 @@ interface QuoteCartContextType {
 
 const QuoteCartContext = createContext<QuoteCartContextType | undefined>(undefined);
 
-const STORAGE_KEY = "translite_quote_cart_v1";
+const STORAGE_KEY_V2 = "translite_quote_cart_v2";
+const STORAGE_KEY_V1 = "translite_quote_cart_v1";
+
+function validateCartItems(parsed: unknown): QuoteItem[] {
+  if (!Array.isArray(parsed)) return [];
+  return parsed.filter((item): item is QuoteItem => {
+    return (
+      item &&
+      typeof item === "object" &&
+      item.product &&
+      typeof item.product.id === "string" &&
+      typeof item.product.nome === "string" &&
+      typeof item.product.preco_lote === "number" &&
+      typeof item.lotes === "number" &&
+      item.lotes > 0
+    );
+  });
+}
 
 export const QuoteCartProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [items, setItems] = useState<QuoteItem[]>(() => {
     try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      return saved ? JSON.parse(saved) : [];
-    } catch {
+      const savedV2 = localStorage.getItem(STORAGE_KEY_V2);
+      if (savedV2) {
+        return validateCartItems(JSON.parse(savedV2));
+      }
+      // Migrate from V1 if available
+      const savedV1 = localStorage.getItem(STORAGE_KEY_V1);
+      if (savedV1) {
+        const sanitized = validateCartItems(JSON.parse(savedV1));
+        localStorage.removeItem(STORAGE_KEY_V1);
+        if (sanitized.length > 0) {
+          localStorage.setItem(STORAGE_KEY_V2, JSON.stringify(sanitized));
+        }
+        return sanitized;
+      }
+      return [];
+    } catch (e) {
+      console.warn("Falha ao carregar cotações do localStorage:", e);
       return [];
     }
   });
 
   useEffect(() => {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
-    } catch {
-      /* ignore */
+      if (items.length === 0) {
+        localStorage.removeItem(STORAGE_KEY_V2);
+      } else {
+        localStorage.setItem(STORAGE_KEY_V2, JSON.stringify(items));
+      }
+    } catch (e) {
+      console.warn("Falha ao salvar cotações no localStorage:", e);
     }
   }, [items]);
 

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { z } from "zod";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,6 +11,28 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Loader2, Upload, X } from "lucide-react";
 import { toast } from "sonner";
 import type { Product, DemandLevel } from "@/types/product";
+
+// Zod client-side schema for Admin form validation
+const productFormSchema = z.object({
+  nome: z.string().trim().min(2, "O nome do produto deve ter pelo menos 2 caracteres"),
+  categoria: z.string().trim().min(1, "Indique uma categoria válida para o produto"),
+  preco_lote: z
+    .number({ invalid_type_error: "Insira um valor numérico válido para o preço do lote" })
+    .positive("O preço do lote deve ser maior que 0 MT"),
+  preco_revenda: z
+    .number({ invalid_type_error: "Insira um valor numérico válido para o preço de revenda" })
+    .positive("O preço de revenda unitário deve ser maior que 0 MT"),
+  quantidade_minima: z
+    .number({ invalid_type_error: "Insira uma quantidade de unidades válida" })
+    .int("A quantidade de unidades por lote deve ser um número inteiro")
+    .min(1, "O lote deve incluir pelo menos 1 unidade"),
+  imagens: z.array(z.string()).min(1, "Adicione pelo menos 1 foto do produto"),
+  demanda: z.enum(["baixa", "media", "alta"]),
+  destaque: z.boolean(),
+  mais_vendido: z.boolean(),
+  descricao: z.string().nullable().optional(),
+});
+
 
 interface Props {
   product: Product | null;
@@ -90,24 +113,33 @@ export function ProductForm({ product, onSaved, onCancel }: Props) {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (form.imagens.length === 0) {
-      toast.error("Adicione pelo menos uma foto");
+
+    const rawPayload = {
+      nome: form.nome,
+      descricao: form.descricao || null,
+      preco_lote: parseFloat(form.preco_lote),
+      preco_revenda: parseFloat(form.preco_revenda),
+      quantidade_minima: parseInt(form.quantidade_minima, 10),
+      categoria: form.categoria,
+      imagens: form.imagens,
+      destaque: form.destaque,
+      mais_vendido: form.mais_vendido,
+      demanda: form.demanda,
+    };
+
+    const parseResult = productFormSchema.safeParse(rawPayload);
+    if (!parseResult.success) {
+      const firstError = parseResult.error.errors[0]?.message || "Dados de formulário inválidos";
+      toast.error(firstError);
       return;
     }
+
+    const validated = parseResult.data;
     setSaving(true);
     try {
       const payload = {
-        nome: form.nome,
-        descricao: form.descricao || null,
-        preco_lote: parseFloat(form.preco_lote),
-        preco_revenda: parseFloat(form.preco_revenda),
-        quantidade_minima: parseInt(form.quantidade_minima, 10),
-        categoria: form.categoria,
-        imagem_url: form.imagens[0] ?? null,
-        imagens: form.imagens,
-        destaque: form.destaque,
-        mais_vendido: form.mais_vendido,
-        demanda: form.demanda,
+        ...validated,
+        imagem_url: validated.imagens[0] ?? null,
       };
 
       const url = product ? `/api/products/${product.id}` : "/api/products";
