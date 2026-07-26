@@ -47,7 +47,10 @@ const Auth = () => {
       if (userCred?.user) {
         await fetch("/api/auth/set-role", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            "X-User-Id": userCred.user.uid,
+          },
           body: JSON.stringify({
             userId: userCred.user.uid,
             email: userCred.user.email,

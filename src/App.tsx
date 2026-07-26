@@ -11,6 +11,7 @@ import Admin from "./pages/Admin.tsx";
 import Contactos from "./pages/Contactos.tsx";
 import NotFound from "./pages/NotFound.tsx";
 import { MobileBottomNav } from "./components/MobileBottomNav.tsx";
+import { ProtectedRoute } from "./components/ProtectedRoute.tsx";
 
 const queryClient = new QueryClient();
 
@@ -26,7 +27,7 @@ const App = () => (
               <Route path="/" element={<Index />} />
               <Route path="/produto/:id" element={<ProductDetail />} />
               <Route path="/auth" element={<Auth />} />
-              <Route path="/admin" element={<Admin />} />
+              <Route path="/admin" element={<ProtectedRoute><Admin /></ProtectedRoute>} />
               <Route path="/contactos" element={<Contactos />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />

@@ -1,10 +1,45 @@
 import express from "express";
 import path from "path";
 import { createServer as createViteServer } from "vite";
+import { z } from "zod";
 import { db } from "./src/db/index.ts";
 import { products, userRoles, users } from "./src/db/schema.ts";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, count } from "drizzle-orm";
 import { MOCK_PRODUCTS } from "./src/data/fallbackProducts.ts";
+
+const productSchema = z.object({
+  id: z.string().optional(),
+  codigo: z.string().nullable().optional(),
+  nome: z.string().min(2, "Nome é obrigatório (mínimo 2 caracteres)"),
+  categoria: z.string().min(1, "Categoria é obrigatória"),
+  preco_lote: z.number({ invalid_type_error: "Preço de lote deve ser numérico" }).positive("Preço de lote deve ser maior que zero"),
+  preco_revenda: z.number({ invalid_type_error: "Preço de revenda deve ser numérico" }).positive("Preço de revenda deve ser maior que zero"),
+  quantidade_minima: z.number({ invalid_type_error: "Quantidade mínima deve ser numérico" }).int().min(1, "Quantidade mínima deve ser de no mínimo 1"),
+  imagem_url: z.string().nullable().optional(),
+  imagens: z.array(z.string()).optional().default([]),
+  demanda: z.enum(["baixa", "media", "alta"]).optional().default("media"),
+  destaque: z.boolean().optional().default(false),
+  mais_vendido: z.boolean().optional().default(false),
+  descricao: z.string().nullable().optional(),
+});
+
+async function checkIsAdmin(userId: string | undefined): Promise<boolean> {
+  if (!process.env.SQL_HOST) return true;
+  if (!userId) return false;
+  try {
+    const userRoleResult = await db.select().from(userRoles).where(eq(userRoles.userId, userId)).limit(1);
+    if (userRoleResult.length > 0 && userRoleResult[0].role === "admin") {
+      return true;
+    }
+    const totalRoles = await db.select({ value: count() }).from(userRoles);
+    if (totalRoles[0]?.value === 0) {
+      return true;
+    }
+    return false;
+  } catch {
+    return false;
+  }
+}
 
 async function startServer() {
   const app = express();
@@ -70,24 +105,33 @@ async function startServer() {
   // POST /api/products (Create Product)
   app.post("/api/products", async (req, res) => {
     try {
-      const p = req.body;
-      if (!p || !p.nome || !p.preco_lote) {
-        return res.status(400).json({ error: "Dados do produto inválidos ou incompletos" });
+      const userId = (req.headers["x-user-id"] as string) || "";
+      const isAdmin = await checkIsAdmin(userId);
+      if (!isAdmin) {
+        return res.status(403).json({ error: "Acesso negado. Apenas administradores podem criar produtos." });
       }
+
+      const parseResult = productSchema.safeParse(req.body);
+      if (!parseResult.success) {
+        const firstError = parseResult.error.errors[0]?.message || "Dados de produto inválidos";
+        return res.status(400).json({ error: firstError });
+      }
+
+      const p = parseResult.data;
       const id = p.id || `prod_${Date.now()}`;
       const newProduct = {
         id,
         codigo: p.codigo || null,
         nome: p.nome,
         categoria: p.categoria,
-        preco_lote: Number(p.preco_lote),
-        preco_revenda: Number(p.preco_revenda),
-        quantidade_minima: Number(p.quantidade_minima) || 1,
+        preco_lote: p.preco_lote,
+        preco_revenda: p.preco_revenda,
+        quantidade_minima: p.quantidade_minima,
         imagem_url: p.imagem_url || null,
-        imagens: Array.isArray(p.imagens) ? p.imagens : [],
-        demanda: p.demanda || "media",
-        destaque: Boolean(p.destaque),
-        mais_vendido: Boolean(p.mais_vendido),
+        imagens: p.imagens,
+        demanda: p.demanda,
+        destaque: p.destaque,
+        mais_vendido: p.mais_vendido,
         descricao: p.descricao || null,
       };
 
@@ -108,22 +152,31 @@ async function startServer() {
   app.put("/api/products/:id", async (req, res) => {
     try {
       const { id } = req.params;
-      const p = req.body;
-      if (!p || !p.nome) {
-        return res.status(400).json({ error: "Dados inválidos para atualização" });
+      const userId = (req.headers["x-user-id"] as string) || "";
+      const isAdmin = await checkIsAdmin(userId);
+      if (!isAdmin) {
+        return res.status(403).json({ error: "Acesso negado. Apenas administradores podem atualizar produtos." });
       }
+
+      const parseResult = productSchema.safeParse(req.body);
+      if (!parseResult.success) {
+        const firstError = parseResult.error.errors[0]?.message || "Dados de atualização inválidos";
+        return res.status(400).json({ error: firstError });
+      }
+
+      const p = parseResult.data;
       const updatedProduct = {
         codigo: p.codigo || null,
         nome: p.nome,
         categoria: p.categoria,
-        preco_lote: Number(p.preco_lote),
-        preco_revenda: Number(p.preco_revenda),
-        quantidade_minima: Number(p.quantidade_minima) || 1,
+        preco_lote: p.preco_lote,
+        preco_revenda: p.preco_revenda,
+        quantidade_minima: p.quantidade_minima,
         imagem_url: p.imagem_url || null,
-        imagens: Array.isArray(p.imagens) ? p.imagens : [],
-        demanda: p.demanda || "media",
-        destaque: Boolean(p.destaque),
-        mais_vendido: Boolean(p.mais_vendido),
+        imagens: p.imagens,
+        demanda: p.demanda,
+        destaque: p.destaque,
+        mais_vendido: p.mais_vendido,
         descricao: p.descricao || null,
       };
 
@@ -141,6 +194,12 @@ async function startServer() {
   app.delete("/api/products/:id", async (req, res) => {
     try {
       const { id } = req.params;
+      const userId = (req.headers["x-user-id"] as string) || "";
+      const isAdmin = await checkIsAdmin(userId);
+      if (!isAdmin) {
+        return res.status(403).json({ error: "Acesso negado. Apenas administradores podem excluir produtos." });
+      }
+
       if (process.env.SQL_HOST) {
         await db.delete(products).where(eq(products.id, id));
       }
@@ -154,6 +213,12 @@ async function startServer() {
   // POST /api/seed (Seed Default Products)
   app.post("/api/seed", async (req, res) => {
     try {
+      const userId = (req.headers["x-user-id"] as string) || "";
+      const isAdmin = await checkIsAdmin(userId);
+      if (!isAdmin) {
+        return res.status(403).json({ error: "Acesso negado. Apenas administradores podem semear dados." });
+      }
+
       if (!process.env.SQL_HOST) {
         return res.status(400).json({ error: "Serviço de banco de dados não disponível no momento." });
       }
@@ -202,14 +267,27 @@ async function startServer() {
   app.post("/api/auth/set-role", async (req, res) => {
     try {
       const { userId, email, role = "admin" } = req.body;
+      const requesterId = (req.headers["x-user-id"] as string) || userId;
       if (!userId) {
         return res.status(400).json({ error: "userId é obrigatório" });
       }
+
       if (process.env.SQL_HOST) {
+        const existingRoles = await db.select({ value: count() }).from(userRoles);
+        const total = existingRoles[0]?.value || 0;
+
+        // Se já existirem permissões registadas, apenas um admin verificado pode conceder novas permissões
+        if (total > 0) {
+          const isRequesterAdmin = await checkIsAdmin(requesterId);
+          if (!isRequesterAdmin) {
+            return res.status(403).json({ error: "Apenas administradores podem atribuir novos privilégios." });
+          }
+        }
+
         if (email) {
           await db.insert(users).values({ uid: userId, email }).onConflictDoNothing();
         }
-        await db.insert(userRoles).values({ userId, role });
+        await db.insert(userRoles).values({ userId, role }).onConflictDoNothing();
       }
       res.json({ success: true, userId, role });
     } catch (error: unknown) {

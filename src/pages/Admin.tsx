@@ -19,7 +19,7 @@ import {
 
 const Admin = () => {
   const navigate = useNavigate();
-  const { session, isAdmin, loading, signOut } = useAuth();
+  const { user, session, isAdmin, loading, signOut } = useAuth();
   const [products, setProducts] = useState<Product[]>([]);
   const [listLoading, setListLoading] = useState(true);
   const [editing, setEditing] = useState<Product | null>(null);
@@ -55,12 +55,16 @@ const Admin = () => {
 
   async function handleDelete(id: string) {
     try {
-      const res = await fetch(`/api/products/${id}`, { method: "DELETE" });
+      const res = await fetch(`/api/products/${id}`, {
+        method: "DELETE",
+        headers: { "X-User-Id": user?.uid || "" },
+      });
       if (res.ok) {
         toast.success("Produto excluído");
         loadProducts();
       } else {
-        toast.error("Erro ao excluir produto");
+        const data = await res.json().catch(() => ({}));
+        toast.error(data.error || "Erro ao excluir produto");
       }
     } catch {
       toast.error("Erro de conexão ao excluir");
@@ -76,7 +80,10 @@ const Admin = () => {
   async function handleSeedProducts() {
     setListLoading(true);
     try {
-      const res = await fetch("/api/seed", { method: "POST" });
+      const res = await fetch("/api/seed", {
+        method: "POST",
+        headers: { "X-User-Id": user?.uid || "" },
+      });
       const data = await res.json();
       if (res.ok && data.success) {
         toast.success(data.message || "Produtos importados com sucesso para o Cloud SQL!");

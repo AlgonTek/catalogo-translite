@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -17,6 +18,7 @@ interface Props {
 }
 
 export function ProductForm({ product, onSaved, onCancel }: Props) {
+  const { user } = useAuth();
   const initialImages = (() => {
     const arr = product?.imagens && product.imagens.length > 0
       ? [...product.imagens]
@@ -113,7 +115,10 @@ export function ProductForm({ product, onSaved, onCancel }: Props) {
 
       const res = await fetch(url, {
         method,
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "X-User-Id": user?.uid || "",
+        },
         body: JSON.stringify(payload),
       });
 
