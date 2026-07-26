@@ -64,6 +64,33 @@ async function startServer() {
     res.json({ status: "ok", timestamp: new Date().toISOString() });
   });
 
+  // GET /api/categories
+  app.get("/api/categories", async (req, res) => {
+    const defaultCategories = [
+      "Eletrónicos",
+      "Acessórios",
+      "Calçados",
+      "Casa & Cozinha",
+      "Moda & Vestuário",
+      "Beleza & Cosméticos",
+      "Telefones & Tablets",
+      "Relógios & Bijuteria",
+      "Bolsas & Malas",
+      "Outros",
+    ];
+    try {
+      if (process.env.SQL_HOST) {
+        const dbProducts = await db.select({ categoria: products.categoria }).from(products);
+        const categories = Array.from(new Set([...defaultCategories, ...dbProducts.map((p) => p.categoria).filter(Boolean)]));
+        return res.json(categories);
+      }
+      const fallbackCategories = Array.from(new Set([...defaultCategories, ...MOCK_PRODUCTS.map((p) => p.categoria).filter(Boolean)]));
+      return res.json(fallbackCategories);
+    } catch {
+      return res.json(defaultCategories);
+    }
+  });
+
   // GET /api/products
   app.get("/api/products", async (req, res) => {
     try {
