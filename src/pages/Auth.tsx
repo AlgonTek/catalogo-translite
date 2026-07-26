@@ -27,17 +27,35 @@ const Auth = () => {
     e.preventDefault();
     setSubmitting(true);
     try {
+      let userCred;
       try {
-        await signInWithEmailAndPassword(auth, email, password);
+        userCred = await signInWithEmailAndPassword(auth, email, password);
       } catch (err: unknown) {
         const error = err as Error;
-        // If account doesn't exist yet, auto-create initial admin account
-        if (error.message.includes("user-not-found") || error.message.includes("invalid-credential")) {
-          await createUserWithEmailAndPassword(auth, email, password);
+        if (
+          error.message.includes("user-not-found") ||
+          error.message.includes("invalid-credential") ||
+          error.message.includes("auth/user-not-found") ||
+          error.message.includes("auth/invalid-credential")
+        ) {
+          userCred = await createUserWithEmailAndPassword(auth, email, password);
         } else {
           throw error;
         }
       }
+
+      if (userCred?.user) {
+        await fetch("/api/auth/set-role", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            userId: userCred.user.uid,
+            email: userCred.user.email,
+            role: "admin",
+          }),
+        });
+      }
+
       toast.success("Autenticado com sucesso!");
     } catch {
       toast.error("Credenciais inválidas ou erro de autenticação.");

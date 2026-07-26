@@ -2,7 +2,7 @@ import express from "express";
 import path from "path";
 import { createServer as createViteServer } from "vite";
 import { db } from "./src/db/index.ts";
-import { products, userRoles } from "./src/db/schema.ts";
+import { products, userRoles, users } from "./src/db/schema.ts";
 import { eq, desc } from "drizzle-orm";
 import { MOCK_PRODUCTS } from "./src/data/fallbackProducts.ts";
 
@@ -195,6 +195,26 @@ async function startServer() {
       const err = error as Error;
       console.error("Error seeding products:", err);
       res.status(500).json({ error: err.message });
+    }
+  });
+
+  // POST /api/auth/set-role (Save user role in Cloud SQL)
+  app.post("/api/auth/set-role", async (req, res) => {
+    try {
+      const { userId, email, role = "admin" } = req.body;
+      if (!userId) {
+        return res.status(400).json({ error: "userId é obrigatório" });
+      }
+      if (process.env.SQL_HOST) {
+        if (email) {
+          await db.insert(users).values({ uid: userId, email }).onConflictDoNothing();
+        }
+        await db.insert(userRoles).values({ userId, role });
+      }
+      res.json({ success: true, userId, role });
+    } catch (error: unknown) {
+      console.error("Error setting user role:", error);
+      res.status(500).json({ error: "Erro ao registrar permissão do utilizador" });
     }
   });
 

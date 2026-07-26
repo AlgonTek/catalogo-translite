@@ -7,14 +7,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Search,
-  ShoppingBag,
   Loader2,
   X,
-  SlidersHorizontal,
-  Flame,
-  TrendingUp,
   Sparkles,
-  ArrowUpDown,
   Tag,
   Layers,
 } from "lucide-react";
@@ -87,16 +82,6 @@ const Index = () => {
     obs.observe(node);
     return () => obs.disconnect();
   }, [hasMore, loading, loadMore]);
-
-  const categoryCounts = useMemo(() => {
-    const map: Record<string, number> = { Todos: products.length };
-    products.forEach((p) => {
-      if (p.categoria) {
-        map[p.categoria] = (map[p.categoria] || 0) + 1;
-      }
-    });
-    return map;
-  }, [products]);
 
   const categories = useMemo(
     () => ["Todos", ...Array.from(new Set(products.map((p) => p.categoria)))],
@@ -206,22 +191,16 @@ const Index = () => {
         <div className="container max-w-6xl mx-auto px-3 sm:px-6">
           <Tabs value={activeCategory} onValueChange={setActiveCategory} className="w-full">
             <TabsList className="h-auto p-1 bg-muted/60 rounded-xl flex gap-1 overflow-x-auto no-scrollbar justify-start w-full border border-border/40">
-              {categories.map((cat) => {
-                const count = categoryCounts[cat] ?? 0;
-                return (
-                  <TabsTrigger
-                    key={cat}
-                    value={cat}
-                    className="shrink-0 px-3.5 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm flex items-center gap-1.5 cursor-pointer"
-                  >
-                    {cat === "Todos" ? <Layers className="w-3.5 h-3.5" /> : <Tag className="w-3 h-3 opacity-70" />}
-                    <span>{cat}</span>
-                    <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-muted-foreground/15 data-[state=active]:bg-primary-foreground/20 font-bold">
-                      {count}
-                    </span>
-                  </TabsTrigger>
-                );
-              })}
+              {categories.map((cat) => (
+                <TabsTrigger
+                  key={cat}
+                  value={cat}
+                  className="shrink-0 px-3.5 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm flex items-center gap-1.5 cursor-pointer"
+                >
+                  {cat === "Todos" ? <Layers className="w-3.5 h-3.5" /> : <Tag className="w-3 h-3 opacity-70" />}
+                  <span>{cat}</span>
+                </TabsTrigger>
+              ))}
             </TabsList>
           </Tabs>
         </div>
