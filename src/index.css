@@ -121,3 +121,28 @@
   .no-scrollbar::-webkit-scrollbar { display: none; }
   .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 }
+
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  .no-print, nav, header, button, [role="dialog"] > button {
+    display: none !important;
+  }
+  .printable-quote, .printable-quote * {
+    visibility: visible;
+  }
+  .printable-quote {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 15mm !important;
+    background: #ffffff !important;
+    color: #000000 !important;
+    box-shadow: none !important;
+    border: none !important;
+  }
+}

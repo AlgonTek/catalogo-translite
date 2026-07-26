@@ -8,10 +8,11 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
-import { ShoppingCart, Trash2, Plus, Minus, MessageCircle, Sparkles, PackageCheck } from "lucide-react";
+import { ShoppingCart, Trash2, Plus, Minus, MessageCircle, Sparkles, PackageCheck, FileText } from "lucide-react";
 import { useQuoteCart } from "@/context/QuoteCartContext";
 import { formatCurrency } from "@/lib/whatsapp";
 import { BlurImage } from "@/components/BlurImage";
+import { QuoteSummaryModal } from "@/components/QuoteSummaryModal";
 
 interface QuoteCartSheetProps {
   children?: React.ReactNode;
@@ -136,7 +137,7 @@ export function QuoteCartSheet({ children, isOpen, onOpenChange }: QuoteCartShee
               })}
             </div>
 
-            {/* Resumo e Botão de Envio WhatsApp */}
+            {/* Resumo e Botão de Envio WhatsApp / Resumo Formal */}
             <div className="p-4 border-t border-border bg-card space-y-3 shadow-lg">
               <Card className="p-3 bg-gradient-to-br from-primary/5 via-muted/40 to-profit/10 border-profit/30 space-y-1.5">
                 <div className="flex justify-between text-xs">
@@ -153,14 +154,27 @@ export function QuoteCartSheet({ children, isOpen, onOpenChange }: QuoteCartShee
                 </div>
               </Card>
 
-              <Button
-                onClick={sendWhatsappQuote}
-                size="lg"
-                className="w-full bg-whatsapp hover:bg-whatsapp/90 text-whatsapp-foreground font-bold text-sm h-12 shadow-elevated gap-2"
-              >
-                <MessageCircle className="w-5 h-5 shrink-0" />
-                Enviar Cotação Completa no WhatsApp
-              </Button>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <QuoteSummaryModal>
+                  <Button
+                    variant="outline"
+                    size="lg"
+                    className="w-full border-primary/30 text-primary hover:bg-primary/5 font-bold text-xs h-11 gap-1.5"
+                  >
+                    <FileText className="w-4 h-4 shrink-0 text-primary" />
+                    Gerar PDF / Resumo
+                  </Button>
+                </QuoteSummaryModal>
+
+                <Button
+                  onClick={() => sendWhatsappQuote()}
+                  size="lg"
+                  className="w-full bg-whatsapp hover:bg-whatsapp/90 text-whatsapp-foreground font-bold text-xs h-11 shadow-elevated gap-1.5"
+                >
+                  <MessageCircle className="w-4 h-4 shrink-0" />
+                  Enviar no WhatsApp
+                </Button>
+              </div>
             </div>
           </>
         )}

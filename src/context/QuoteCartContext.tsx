@@ -1,11 +1,20 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import type { Product } from "@/types/product";
 import { toast } from "sonner";
-import { buildWhatsappLink, formatCurrency } from "@/lib/whatsapp";
+import { formatCurrency, WHATSAPP_NUMBER } from "@/lib/whatsapp";
 
 export interface QuoteItem {
   product: Product;
   lotes: number; // número de lotes
+}
+
+export interface ClientQuoteInfo {
+  nome?: string;
+  empresa?: string;
+  nuit?: string;
+  provincia?: string;
+  whatsapp?: string;
+  observacoes?: string;
 }
 
 interface QuoteCartContextType {
@@ -19,7 +28,8 @@ interface QuoteCartContextType {
   totalInvestimento: number;
   totalRetorno: number;
   lucroEstimadoTotal: number;
-  sendWhatsappQuote: () => void;
+  sendWhatsappQuote: (clientInfo?: ClientQuoteInfo) => void;
+  getFormattedQuoteText: (clientInfo?: ClientQuoteInfo) => string;
 }
 
 const QuoteCartContext = createContext<QuoteCartContextType | undefined>(undefined);
@@ -133,34 +143,61 @@ export const QuoteCartProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
   const lucroEstimadoTotal = totalRetorno - totalInvestimento;
 
-  const sendWhatsappQuote = () => {
+  const getFormattedQuoteText = (clientInfo?: ClientQuoteInfo) => {
+    if (items.length === 0) return "";
+
+    let text = `📄 *COTACÃO DE ATACADO — TRANSLITE SOLUTIONS*\n`;
+    text += `_Importação & Distribuição de Atacado em Moçambique_\n`;
+    text += `🗓️ Data: ${new Date().toLocaleDateString("pt-MZ")}\n\n`;
+
+    if (clientInfo?.nome || clientInfo?.empresa || clientInfo?.provincia) {
+      text += `👤 *DADOS DO CLIENTE / REVENDEDOR:*\n`;
+      if (clientInfo.nome) text += `   • *Nome:* ${clientInfo.nome}\n`;
+      if (clientInfo.empresa) text += `   • *Empresa / Loja:* ${clientInfo.empresa}\n`;
+      if (clientInfo.nuit) text += `   • *NUIT:* ${clientInfo.nuit}\n`;
+      if (clientInfo.provincia) text += `   • *Província / Cidade:* ${clientInfo.provincia}\n`;
+      if (clientInfo.whatsapp) text += `   • *WhatsApp:* ${clientInfo.whatsapp}\n`;
+      text += `\n`;
+    }
+
+    text += `📦 *ITENS DA COTAÇÃO:*\n`;
+    items.forEach((item, index) => {
+      const p = item.product;
+      const unTotal = item.lotes * p.quantidade_minima;
+      const subtotal = item.lotes * p.preco_lote;
+      text += `${index + 1}. *${p.nome}*\n`;
+      if (p.codigo) text += `   • Cód: ${p.codigo}\n`;
+      text += `   • Quantidade: ${item.lotes} ${item.lotes === 1 ? 'lote' : 'lotes'} (${unTotal} un)\n`;
+      text += `   • Preço do Lote: ${formatCurrency(p.preco_lote)}\n`;
+      text += `   • Subtotal: *${formatCurrency(subtotal)}*\n\n`;
+    });
+
+    text += `-----------------------------------\n`;
+    text += `📊 *RESUMO DO PEDIDO:*\n`;
+    text += `📦 Total de Lotes: *${totalLotes}*\n`;
+    text += `🔢 Total de Unidades: *${totalUnidades} un*\n`;
+    text += `💰 *INVESTIMENTO TOTAL:* *${formatCurrency(totalInvestimento)}*\n`;
+    text += `📈 *LUCRO PROJETADO:* *${formatCurrency(lucroEstimadoTotal)}*\n\n`;
+
+    if (clientInfo?.observacoes) {
+      text += `📝 *Observações:* ${clientInfo.observacoes}\n\n`;
+    }
+
+    text += `🇲🇿 *Condições:* M-Pesa, e-Mola, BCI, Millennium BIM, Standard Bank. Envio para todas as províncias.\n`;
+    text += `Por favor, confirmem a disponibilidade e dados para pagamento / entrega. Obrigado!`;
+
+    return text;
+  };
+
+  const sendWhatsappQuote = (clientInfo?: ClientQuoteInfo) => {
     if (items.length === 0) {
       toast.error("Sua lista de cotação está vazia!");
       return;
     }
 
-    let text = `🛒 *COTAÇÃO DE ATACADO — TRANSLITE SOLUTIONS*\n\n`;
-    text += `Olá! Gostaria de fazer o pedido dos seguintes lotes:\n\n`;
-
-    items.forEach((item, index) => {
-      const p = item.product;
-      const unTotal = item.lotes * p.quantidade_minima;
-      const subtotal = item.lotes * p.preco_lote;
-      text += `*${index + 1}. ${p.nome}*\n`;
-      if (p.codigo) text += `   • Cód: ${p.codigo}\n`;
-      text += `   • Lotes: ${item.lotes} (${unTotal} un)\n`;
-      text += `   • Subtotal: ${formatCurrency(subtotal)}\n\n`;
-    });
-
-    text += `-------------------------------\n`;
-    text += `📦 *Total de Lotes:* ${totalLotes}\n`;
-    text += `🔢 *Total de Unidades:* ${totalUnidades}\n`;
-    text += `💰 *INVESTIMENTO TOTAL:* ${formatCurrency(totalInvestimento)}\n`;
-    text += `📈 *LUCRO PROJETADO:* ${formatCurrency(lucroEstimadoTotal)}\n\n`;
-    text += `Por favor, confirmem a disponibilidade e dados para pagamento / entrega em Moçambique. Obrigado!`;
-
+    const text = getFormattedQuoteText(clientInfo);
     const encoded = encodeURIComponent(text);
-    const url = `https://wa.me/258840000000?text=${encoded}`;
+    const url = `https://wa.me/${WHATSAPP_NUMBER}?text=${encoded}`;
     window.open(url, "_blank");
   };
 
@@ -178,6 +215,7 @@ export const QuoteCartProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         totalRetorno,
         lucroEstimadoTotal,
         sendWhatsappQuote,
+        getFormattedQuoteText,
       }}
     >
       {children}
