@@ -274,7 +274,8 @@ const Index = () => {
             },
             "contactPoint": {
               "@type": "ContactPoint",
-              "telephone": "+258840000000",
+              "telephone": "+258876751885",
+              "email": "comercial@translitelda.com",
               "contactType": "sales",
               "areaServed": "MZ"
             }
@@ -309,7 +310,12 @@ const Index = () => {
 
       <footer className="border-t border-border/50 py-6 mt-8 bg-muted/20 text-xs">
         <div className="container max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3 text-muted-foreground px-3 sm:px-6">
-          <p>© {new Date().getFullYear()} Translite Solutions, Lda — Atacado Moçambique</p>
+          <div className="space-y-1 text-center sm:text-left">
+            <p className="font-semibold text-foreground">© {new Date().getFullYear()} Translite Solutions, Lda — Atacado Moçambique</p>
+            <p className="text-[11px]">
+              📞 <a href="https://wa.me/258876751885" target="_blank" rel="noreferrer" className="hover:underline text-foreground">+258 87 675 1885</a> • ✉️ <a href="mailto:comercial@translitelda.com" className="hover:underline text-foreground">comercial@translitelda.com</a>
+            </p>
+          </div>
           <div className="flex items-center gap-4 font-medium">
             <Link to="/contactos" className="hover:text-primary">Contactos</Link>
             <Link to="/admin" className="hover:text-primary">Admin</Link>

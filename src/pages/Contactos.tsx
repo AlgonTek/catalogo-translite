@@ -6,7 +6,8 @@ import { Mail, MapPin, Phone, MessageCircle, Clock } from "lucide-react";
 import { WHATSAPP_NUMBER } from "@/lib/whatsapp";
 
 const PHONE_DISPLAY = "+258 87 675 1885";
-const EMAIL = "translitelda@hotmail.com";
+const EMAIL_PRIMARY = "comercial@translitelda.com";
+const EMAIL_SECONDARY = "translitelda@hotmail.com";
 const LOCATION = "Maputo Cidade, Moçambique";
 
 const Contactos = () => {
@@ -66,18 +67,33 @@ const Contactos = () => {
           </Card>
 
           {/* Email */}
-          <Card className="p-3 sm:p-5 flex flex-col gap-2 sm:gap-3">
+          <Card className="p-3 sm:p-5 flex flex-col gap-2 sm:gap-3 col-span-2 sm:col-span-1">
             <div className="flex items-center gap-2 sm:gap-3">
               <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-accent/15 text-accent flex items-center justify-center shrink-0">
                 <Mail className="w-4 h-4 sm:w-5 sm:h-5" />
               </div>
-              <h2 className="font-bold text-sm sm:text-lg">Email</h2>
+              <h2 className="font-bold text-sm sm:text-lg">Emails Oficiais</h2>
             </div>
-            <p className="text-[11px] sm:text-sm text-muted-foreground hidden sm:block">Para parcerias, propostas e pedidos formais.</p>
-            <p className="font-semibold text-[11px] sm:text-base break-all">{EMAIL}</p>
-            <Button asChild size="sm" variant="outline" className="mt-auto h-8 sm:h-10 text-xs sm:text-sm">
-              <a href={`mailto:${EMAIL}`}>Enviar email</a>
-            </Button>
+            <p className="text-[11px] sm:text-sm text-muted-foreground hidden sm:block">Para cotações, parcerias e propostas formais.</p>
+            <div className="space-y-1 my-auto">
+              <div>
+                <span className="text-[10px] text-muted-foreground uppercase font-bold block">Comercial:</span>
+                <a href={`mailto:${EMAIL_PRIMARY}`} className="font-semibold text-xs sm:text-sm text-primary hover:underline break-all">
+                  {EMAIL_PRIMARY}
+                </a>
+              </div>
+              <div>
+                <span className="text-[10px] text-muted-foreground uppercase font-bold block">Geral:</span>
+                <a href={`mailto:${EMAIL_SECONDARY}`} className="font-semibold text-xs sm:text-sm text-muted-foreground hover:text-foreground hover:underline break-all">
+                  {EMAIL_SECONDARY}
+                </a>
+              </div>
+            </div>
+            <div className="flex gap-2 mt-auto">
+              <Button asChild size="sm" variant="outline" className="flex-1 h-8 sm:h-10 text-xs">
+                <a href={`mailto:${EMAIL_PRIMARY}`}>Enviar Email</a>
+              </Button>
+            </div>
           </Card>
 
           {/* Localização */}

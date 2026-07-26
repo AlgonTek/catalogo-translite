@@ -177,7 +177,7 @@ export function QuoteSummaryModal({ children }: QuoteSummaryModalProps) {
               <h2 className="text-xl font-extrabold text-primary tracking-tight">TRANSLITE SOLUTIONS</h2>
               <p className="text-xs text-muted-foreground font-medium">Importação & Distribuição de Produtos de Atacado</p>
               <p className="text-[11px] text-muted-foreground mt-1">
-                📍 Maputo, Moçambique • 📞 (+258) 87 675 1885 • 🌐 www.translitesolutions.co.mz
+                📍 Maputo, Moçambique • 📞 (+258) 87 675 1885 • ✉️ comercial@translitelda.com / translitelda@hotmail.com
               </p>
             </div>
             <div className="text-left sm:text-right bg-muted/30 p-3 rounded-lg border border-border/50">
