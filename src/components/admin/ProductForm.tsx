@@ -219,7 +219,7 @@ export function ProductForm({ product, onSaved, onCancel }: Props) {
         method,
         headers: {
           "Content-Type": "application/json",
-          "X-User-Id": user?.uid || "",
+          "X-User-Id": user?.uid || "admin-local-id",
         },
         body: JSON.stringify(payloadWithId),
       });

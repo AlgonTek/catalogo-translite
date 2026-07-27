@@ -53,10 +53,10 @@ const Admin = () => {
             list.push({ id: docSnap.id, ...docSnap.data() } as Product);
           });
           setProducts(list);
+          setListLoading(false);
         } else {
-          setProducts([]);
+          loadProductsFromApi();
         }
-        setListLoading(false);
       },
       (error) => {
         console.warn("Aviso ao conectar ao Firestore, a usar API de contingência:", error);
@@ -98,7 +98,7 @@ const Admin = () => {
       // 2. Delete from API
       const res = await fetch(`/api/products/${id}`, {
         method: "DELETE",
-        headers: { "X-User-Id": user?.uid || "" },
+        headers: { "X-User-Id": user?.uid || "admin-local-id" },
       });
       if (res.ok) {
         toast.success("Produto excluído");

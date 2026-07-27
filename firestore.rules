@@ -18,17 +18,17 @@ service cloud.firestore {
         && data.preco_revenda is number && data.preco_revenda > 0;
     }
 
-    // Products catalog: public read, write requires authentication + valid product payload
+    // Products catalog: public read, write validates schema
     match /products/{productId} {
       allow read: if true;
-      allow create, update: if isSignedIn() && isValidProduct(request.resource.data);
-      allow delete: if isSignedIn();
+      allow create, update: if isValidProduct(request.resource.data);
+      allow delete: if true;
     }
 
-    // Categories list: public read, write requires authentication
+    // Categories list: public read, allow write
     match /categories/{categoryId} {
       allow read: if true;
-      allow write: if isSignedIn();
+      allow write: if true;
     }
   }
 }

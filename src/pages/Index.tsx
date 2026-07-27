@@ -50,11 +50,20 @@ const Index = () => {
             list.push({ id: docSnap.id, ...docSnap.data() } as Product);
           });
           setProducts(list);
+          setHasMore(false);
+          setLoading(false);
         } else {
-          setProducts([]);
+          fetch("/api/products")
+            .then((res) => (res.ok ? res.json() : []))
+            .then((data) => {
+              setProducts(Array.isArray(data) ? data : []);
+            })
+            .catch(() => setProducts([]))
+            .finally(() => {
+              setHasMore(false);
+              setLoading(false);
+            });
         }
-        setHasMore(false);
-        setLoading(false);
       },
       () => {
         fetch("/api/products")
