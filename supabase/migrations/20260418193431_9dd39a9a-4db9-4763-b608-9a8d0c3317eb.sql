@@ -1,2 +1,0 @@
-UPDATE auth.users SET email_confirmed_at = now() WHERE email = 'admin@translite.co.mz';
-UPDATE public.user_roles SET role = 'admin' WHERE user_id = (SELECT id FROM auth.users WHERE email = 'admin@translite.co.mz');

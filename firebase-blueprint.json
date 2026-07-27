@@ -1,0 +1,43 @@
+{
+  "entities": {
+    "Product": {
+      "title": "Product",
+      "description": "Wholesale product catalog item",
+      "type": "object",
+      "properties": {
+        "codigo": { "type": "string", "maxLength": 50 },
+        "nome": { "type": "string", "maxLength": 200 },
+        "descricao": { "type": "string", "maxLength": 2000 },
+        "categoria": { "type": "string", "maxLength": 100 },
+        "quantidade_minima": { "type": "number" },
+        "preco_lote": { "type": "number" },
+        "preco_revenda": { "type": "number" },
+        "imagens": { "type": "array" },
+        "disponivel": { "type": "boolean" },
+        "destaque": { "type": "boolean" },
+        "mais_vendido": { "type": "boolean" },
+        "demanda": { "type": "string", "enum": ["alta", "media", "baixa"] }
+      },
+      "required": ["nome", "categoria", "quantidade_minima", "preco_lote", "preco_revenda"]
+    },
+    "Category": {
+      "title": "Category",
+      "description": "Wholesale product category",
+      "type": "object",
+      "properties": {
+        "nome": { "type": "string", "maxLength": 100 }
+      },
+      "required": ["nome"]
+    }
+  },
+  "firestore": {
+    "/products/{productId}": {
+      "schema": "Product",
+      "description": "Wholesale product items"
+    },
+    "/categories/{categoryId}": {
+      "schema": "Category",
+      "description": "Wholesale product categories"
+    }
+  }
+}

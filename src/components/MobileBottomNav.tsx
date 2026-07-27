@@ -7,6 +7,7 @@ import { QuoteCartSheet } from "@/components/QuoteCartSheet";
 
 export function MobileBottomNav() {
   const { pathname } = useLocation();
+  const isAdminPath = pathname.startsWith("/admin") || pathname === "/auth";
   const { totalLotes } = useQuoteCart();
   const [isCartOpen, setIsCartOpen] = useState(false);
 
@@ -16,7 +17,7 @@ export function MobileBottomNav() {
         className="fixed bottom-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-lg border-t border-border/80 sm:hidden shadow-lg pb-safe"
         style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
       >
-        <div className="grid grid-cols-5 h-14 items-center justify-items-center max-w-md mx-auto px-1">
+        <div className={cn("grid h-14 items-center justify-items-center max-w-md mx-auto px-1", isAdminPath ? "grid-cols-4" : "grid-cols-5")}>
           <Link
             to="/"
             className={cn(
@@ -40,21 +41,23 @@ export function MobileBottomNav() {
             <span className="text-[9px] mt-0.5 leading-none truncate max-w-full">Produtos</span>
           </a>
 
-          {/* Botão Cotação */}
-          <button
-            onClick={() => setIsCartOpen(true)}
-            className="relative flex flex-col items-center justify-center w-full h-full text-center transition-colors px-1 text-primary font-bold"
-          >
-            <div className="p-1 rounded-full bg-primary/10 text-primary scale-110 relative">
-              <ShoppingCart className="w-4 h-4" />
-              {totalLotes > 0 && (
-                <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-[9px] font-black w-4 h-4 rounded-full flex items-center justify-center border border-background animate-pulse">
-                  {totalLotes}
-                </span>
-              )}
-            </div>
-            <span className="text-[9px] mt-0.5 leading-none truncate max-w-full">Cotação</span>
-          </button>
+          {/* Botão Cotação (Apenas na loja) */}
+          {!isAdminPath && (
+            <button
+              onClick={() => setIsCartOpen(true)}
+              className="relative flex flex-col items-center justify-center w-full h-full text-center transition-colors px-1 text-primary font-bold"
+            >
+              <div className="p-1 rounded-full bg-primary/10 text-primary scale-110 relative">
+                <ShoppingCart className="w-4 h-4" />
+                {totalLotes > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-[9px] font-black w-4 h-4 rounded-full flex items-center justify-center border border-background animate-pulse">
+                    {totalLotes}
+                  </span>
+                )}
+              </div>
+              <span className="text-[9px] mt-0.5 leading-none truncate max-w-full">Cotação</span>
+            </button>
+          )}
 
           <Link
             to="/contactos"
@@ -73,10 +76,10 @@ export function MobileBottomNav() {
             to="/admin"
             className={cn(
               "flex flex-col items-center justify-center w-full h-full text-center transition-colors px-1",
-              pathname.startsWith("/admin") || pathname === "/auth" ? "text-primary font-bold" : "text-muted-foreground hover:text-foreground"
+              isAdminPath ? "text-primary font-bold" : "text-muted-foreground hover:text-foreground"
             )}
           >
-            <div className={cn("p-1 rounded-full transition-all", pathname.startsWith("/admin") ? "bg-primary/10 text-primary scale-110" : "")}>
+            <div className={cn("p-1 rounded-full transition-all", isAdminPath ? "bg-primary/10 text-primary scale-110" : "")}>
               <ShieldCheck className="w-4 h-4" />
             </div>
             <span className="text-[9px] mt-0.5 leading-none truncate max-w-full">Admin</span>
@@ -84,7 +87,7 @@ export function MobileBottomNav() {
         </div>
       </nav>
 
-      <QuoteCartSheet isOpen={isCartOpen} onOpenChange={setIsCartOpen} />
+      {!isAdminPath && <QuoteCartSheet isOpen={isCartOpen} onOpenChange={setIsCartOpen} />}
     </>
   );
 }

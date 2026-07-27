@@ -36,21 +36,23 @@ export function SiteHeader() {
           </Link>
 
           <nav className="flex items-center gap-2 shrink-0">
-            {/* Botão de Cotação Atacadista */}
-            <Button
-              onClick={() => setIsCartOpen(true)}
-              size="sm"
-              variant="outline"
-              className="relative gap-1.5 border-primary/40 bg-primary/5 hover:bg-primary/10 text-foreground"
-            >
-              <ShoppingCart className="w-4 h-4 text-primary" />
-              <span className="hidden sm:inline font-bold text-xs">Cotação</span>
-              {totalLotes > 0 && (
-                <Badge className="bg-primary text-primary-foreground font-extrabold h-5 min-w-[20px] px-1 text-[10px] rounded-full flex items-center justify-center -mr-1">
-                  {totalLotes}
-                </Badge>
-              )}
-            </Button>
+            {/* Botão de Cotação Atacadista (Apenas visível na versão loja) */}
+            {!isAdmin && (
+              <Button
+                onClick={() => setIsCartOpen(true)}
+                size="sm"
+                variant="outline"
+                className="relative gap-1.5 border-primary/40 bg-primary/5 hover:bg-primary/10 text-foreground"
+              >
+                <ShoppingCart className="w-4 h-4 text-primary" />
+                <span className="hidden sm:inline font-bold text-xs">Cotação</span>
+                {totalLotes > 0 && (
+                  <Badge className="bg-primary text-primary-foreground font-extrabold h-5 min-w-[20px] px-1 text-[10px] rounded-full flex items-center justify-center -mr-1">
+                    {totalLotes}
+                  </Badge>
+                )}
+              </Button>
+            )}
 
             {isAdmin ? (
               <Button asChild size="sm" variant="ghost">
@@ -68,8 +70,8 @@ export function SiteHeader() {
         </div>
       </header>
 
-      {/* Sheet Modal da Cotação */}
-      <QuoteCartSheet isOpen={isCartOpen} onOpenChange={setIsCartOpen} />
+      {/* Sheet Modal da Cotação (Apenas na loja) */}
+      {!isAdmin && <QuoteCartSheet isOpen={isCartOpen} onOpenChange={setIsCartOpen} />}
     </>
   );
 }

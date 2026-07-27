@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { db } from "@/lib/firebase";
+import { doc, getDoc } from "firebase/firestore";
 import {
   Minus,
   Plus,
@@ -28,8 +30,6 @@ import { useQuoteCart } from "@/context/QuoteCartContext";
 import type { Product } from "@/types/product";
 import { toast } from "sonner";
 
-import { MOCK_PRODUCTS } from "@/data/fallbackProducts";
-
 const demandLabel: Record<Product["demanda"], { label: string; className: string }> = {
   alta: { label: "Demanda alta", className: "bg-demand-high text-white" },
   media: { label: "Demanda média", className: "bg-demand-medium text-foreground" },
@@ -49,11 +49,28 @@ const ProductDetail = () => {
   useEffect(() => {
     if (!id) return;
     (async () => {
+      // 1. Try Firestore first
+      try {
+        const docRef = doc(db, "products", id);
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists()) {
+          const data = { id: docSnap.id, ...docSnap.data() } as Product;
+          setProduct(data);
+          setActiveImg(0);
+          setLoading(false);
+          document.title = `${data.nome} — Translite`;
+          return;
+        }
+      } catch (fsErr) {
+        console.warn("Aviso ao buscar produto no Firestore:", fsErr);
+      }
+
+      // 2. Try REST API
       try {
         const res = await fetch(`/api/products/${id}`);
         if (res.ok) {
           const data = await res.json();
-          if (data) {
+          if (data && data.nome) {
             setProduct(data as Product);
             setActiveImg(0);
             setLoading(false);
@@ -62,20 +79,11 @@ const ProductDetail = () => {
           }
         }
       } catch {
-        /* fallback below */
+        /* proceed to not found */
       }
 
-      // Check fallback mock products
-      const fallback = MOCK_PRODUCTS.find((p) => p.id === id);
-      if (fallback) {
-        setProduct(fallback);
-        setActiveImg(0);
-        setLoading(false);
-        document.title = `${fallback.nome} — Translite`;
-      } else {
-        toast.error("Produto não encontrado");
-        navigate("/");
-      }
+      toast.error("Produto não encontrado");
+      navigate("/");
     })();
   }, [id, navigate]);
 

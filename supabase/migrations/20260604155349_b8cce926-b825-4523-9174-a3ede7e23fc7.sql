@@ -1,1 +1,0 @@
-ALTER TABLE public.products ALTER COLUMN codigo SET DEFAULT ('P-' || LPAD(nextval('public.products_codigo_seq')::text, 4, '0'));

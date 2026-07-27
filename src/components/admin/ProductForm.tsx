@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { z } from "zod";
 import { useAuth } from "@/hooks/useAuth";
+import { db } from "@/lib/firebase";
+import { doc, setDoc } from "firebase/firestore";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -40,7 +42,7 @@ const productFormSchema = z.object({
     .number({ invalid_type_error: "Insira uma quantidade de unidades válida" })
     .int("A quantidade de unidades por lote deve ser um número inteiro")
     .min(1, "O lote deve incluir pelo menos 1 unidade"),
-  imagens: z.array(z.string()).min(1, "Adicione pelo menos 1 foto do produto"),
+  imagens: z.array(z.string()).optional().default([]),
   demanda: z.enum(["baixa", "media", "alta"]),
   destaque: z.boolean(),
   mais_vendido: z.boolean(),
@@ -187,15 +189,31 @@ export function ProductForm({ product, onSaved, onCancel }: Props) {
     }
 
     const validated = parseResult.data;
+    const finalImagens = validated.imagens && validated.imagens.length > 0
+      ? validated.imagens
+      : ["https://images.unsplash.com/photo-1581235720704-06d3acfcb36f?w=600&auto=format&fit=crop&q=80"];
+
     setSaving(true);
     try {
       const payload = {
         ...validated,
-        imagem_url: validated.imagens[0] ?? null,
+        imagens: finalImagens,
+        imagem_url: finalImagens[0],
       };
 
       const url = product ? `/api/products/${product.id}` : "/api/products";
       const method = product ? "PUT" : "POST";
+
+      const productId = product?.id || payload.id || `prod_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+      const payloadWithId = { ...payload, id: productId };
+
+      // Sync to Firestore
+      try {
+        const productRef = doc(db, "products", productId);
+        await setDoc(productRef, payloadWithId, { merge: true });
+      } catch (fsErr) {
+        console.warn("Aviso ao sincronizar produto no Firestore:", fsErr);
+      }
 
       const res = await fetch(url, {
         method,
@@ -203,7 +221,7 @@ export function ProductForm({ product, onSaved, onCancel }: Props) {
           "Content-Type": "application/json",
           "X-User-Id": user?.uid || "",
         },
-        body: JSON.stringify(payload),
+        body: JSON.stringify(payloadWithId),
       });
 
       if (!res.ok) {

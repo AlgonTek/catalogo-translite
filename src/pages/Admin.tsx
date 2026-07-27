@@ -2,12 +2,14 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { SiteHeader } from "@/components/SiteHeader";
 import { useAuth } from "@/hooks/useAuth";
+import { db } from "@/lib/firebase";
+import { collection, doc, deleteDoc, onSnapshot } from "firebase/firestore";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Plus, Pencil, Trash2, LogOut, Package, Search, ChevronLeft, ChevronRight, DownloadCloud, Sparkles } from "lucide-react";
+import { Plus, Pencil, Trash2, LogOut, Package, Search, ChevronLeft, ChevronRight, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 import type { Product } from "@/types/product";
 import { ProductForm } from "@/components/admin/ProductForm";
@@ -28,26 +30,57 @@ const Admin = () => {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 6;
+
   useEffect(() => { document.title = "Admin — AtacadoPro"; }, []);
 
   useEffect(() => {
     if (loading) return;
-    if (!session) { navigate("/auth", { replace: true }); return; }
-    loadProducts();
+    if (!session && !isAdmin) {
+      navigate("/auth", { replace: true });
+      return;
+    }
+
+    setListLoading(true);
+
+    // Subscribe to Firestore real-time products collection
+    const productsCol = collection(db, "products");
+    const unsubscribe = onSnapshot(
+      productsCol,
+      (snapshot) => {
+        if (!snapshot.empty) {
+          const list: Product[] = [];
+          snapshot.forEach((docSnap) => {
+            list.push({ id: docSnap.id, ...docSnap.data() } as Product);
+          });
+          setProducts(list);
+        } else {
+          setProducts([]);
+        }
+        setListLoading(false);
+      },
+      (error) => {
+        console.warn("Aviso ao conectar ao Firestore, a usar API de contingência:", error);
+        loadProductsFromApi();
+      }
+    );
+
+    return () => {
+      unsubscribe();
+    };
   }, [loading, session, isAdmin, navigate]);
 
-  async function loadProducts() {
+  async function loadProductsFromApi() {
     setListLoading(true);
     try {
       const res = await fetch("/api/products");
       if (res.ok) {
         const data = await res.json();
-        setProducts(data as Product[]);
+        setProducts(Array.isArray(data) ? (data as Product[]) : []);
       } else {
-        toast.error("Erro ao carregar produtos");
+        setProducts([]);
       }
     } catch {
-      toast.error("Erro ao conectar ao servidor");
+      setProducts([]);
     } finally {
       setListLoading(false);
     }
@@ -55,13 +88,20 @@ const Admin = () => {
 
   async function handleDelete(id: string) {
     try {
+      // 1. Delete from Firestore
+      try {
+        await deleteDoc(doc(db, "products", id));
+      } catch (fsErr) {
+        console.warn("Erro ao deletar documento no Firestore:", fsErr);
+      }
+
+      // 2. Delete from API
       const res = await fetch(`/api/products/${id}`, {
         method: "DELETE",
         headers: { "X-User-Id": user?.uid || "" },
       });
       if (res.ok) {
         toast.success("Produto excluído");
-        loadProducts();
       } else {
         const data = await res.json().catch(() => ({}));
         toast.error(data.error || "Erro ao excluir produto");
@@ -75,28 +115,6 @@ const Admin = () => {
   async function handleSignOut() {
     await signOut();
     navigate("/");
-  }
-
-  async function handleSeedProducts() {
-    setListLoading(true);
-    try {
-      const res = await fetch("/api/seed", {
-        method: "POST",
-        headers: { "X-User-Id": user?.uid || "" },
-      });
-      const data = await res.json();
-      if (res.ok && data.success) {
-        toast.success(data.message || "Produtos importados com sucesso para o Cloud SQL!");
-        await loadProducts();
-      } else {
-        toast.error("Erro ao importar produtos: " + (data.error || "Tente novamente."));
-      }
-    } catch (e) {
-      const err = e as Error;
-      toast.error("Erro ao sincronizar produtos: " + (err?.message || "Erro desconhecido"));
-    } finally {
-      setListLoading(false);
-    }
   }
 
   const filtered = useMemo(() => {
@@ -147,13 +165,15 @@ const Admin = () => {
       <div className="container py-6 sm:py-8">
         <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
           <div>
-            <h1 className="text-2xl sm:text-3xl">Painel Administrativo</h1>
+            <div className="flex items-center gap-2">
+              <h1 className="text-2xl sm:text-3xl">Painel Administrativo</h1>
+              <Badge variant="outline" className="text-[10px] font-medium border-emerald-500/40 text-emerald-600 bg-emerald-50 dark:bg-emerald-950/20 dark:text-emerald-400 gap-1 hidden sm:inline-flex">
+                <ShieldCheck className="w-3 h-3 text-emerald-500" /> Sessão Protegida (30m Inatividade)
+              </Badge>
+            </div>
             <p className="text-sm text-muted-foreground">{products.length} produto(s) no catálogo</p>
           </div>
-          <div className="flex gap-2 flex-wrap">
-            <Button variant="outline" size="sm" onClick={handleSeedProducts} title="Sincronizar produtos do catálogo para o Supabase">
-              <DownloadCloud className="w-4 h-4 mr-1 text-primary" /> Importar Produtos Padrão
-            </Button>
+          <div className="flex gap-2 flex-wrap items-center">
             <Button variant="outline" size="sm" onClick={handleSignOut}>
               <LogOut className="w-4 h-4 mr-1" /> Sair
             </Button>
@@ -181,10 +201,10 @@ const Admin = () => {
             <Package className="w-12 h-12 stroke-1 opacity-50" />
             <div>
               <p className="font-bold text-foreground">Nenhum produto cadastrado na base de dados.</p>
-              <p className="text-xs text-muted-foreground mt-1">Deseja importar o catálogo inicial de produtos para o Supabase?</p>
+              <p className="text-xs text-muted-foreground mt-1">Comece adicionando o seu primeiro produto ao catálogo.</p>
             </div>
-            <Button onClick={handleSeedProducts} variant="default" className="gradient-primary text-primary-foreground font-bold text-xs mt-2">
-              <DownloadCloud className="w-4 h-4 mr-1.5" /> Importar Catálogo Inicial
+            <Button onClick={() => setCreating(true)} variant="default" className="gradient-primary text-primary-foreground font-bold text-xs mt-2">
+              <Plus className="w-4 h-4 mr-1.5" /> Adicionar Primeiro Produto
             </Button>
           </Card>
         ) : filtered.length === 0 ? (
@@ -213,7 +233,7 @@ const Admin = () => {
                     </div>
                     <h3 className="font-bold truncate">{p.nome}</h3>
                     <p className="text-xs text-muted-foreground">
-                      Lote {formatCurrency(p.preco_lote)} · Lucro {formatCurrency(p.lucro_estimado)}
+                      Lote {formatCurrency(p.preco_lote)} · Lucro {formatCurrency(p.lucro_estimado ?? ((p.preco_revenda ?? 0) * (p.quantidade_minima ?? 1) - (p.preco_lote ?? 0)))}
                     </p>
                   </div>
                   <div className="flex gap-1">

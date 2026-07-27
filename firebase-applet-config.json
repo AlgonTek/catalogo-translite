@@ -3,6 +3,7 @@
   "appId": "1:776024026274:web:84e5c0123f986e26e7fbfb",
   "apiKey": "AIzaSyCrHezpJTP9N12RldsV8j_iNP4dH7gBe40",
   "authDomain": "diesel-bounty-6j4jh.firebaseapp.com",
+  "firestoreDatabaseId": "ai-studio-translite-3b7587cc-dc37-44a3-82fc-5e4977d6746a",
   "storageBucket": "diesel-bounty-6j4jh.firebasestorage.app",
   "messagingSenderId": "776024026274",
   "measurementId": "",

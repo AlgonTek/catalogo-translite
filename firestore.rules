@@ -1,0 +1,34 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Catch-all default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isValidProduct(data) {
+      return data.keys().hasAll(['nome', 'preco_lote', 'preco_revenda', 'categoria'])
+        && data.nome is string && data.nome.size() >= 2 && data.nome.size() <= 200
+        && data.categoria is string && data.categoria.size() >= 1
+        && data.preco_lote is number && data.preco_lote > 0
+        && data.preco_revenda is number && data.preco_revenda > 0;
+    }
+
+    // Products catalog: public read, write requires authentication + valid product payload
+    match /products/{productId} {
+      allow read: if true;
+      allow create, update: if isSignedIn() && isValidProduct(request.resource.data);
+      allow delete: if isSignedIn();
+    }
+
+    // Categories list: public read, write requires authentication
+    match /categories/{categoryId} {
+      allow read: if true;
+      allow write: if isSignedIn();
+    }
+  }
+}

@@ -1,8 +1,10 @@
 // Número WhatsApp do lojista (formato internacional sem +)
 export const WHATSAPP_NUMBER = "258876751885";
 
-export const formatCurrency = (value: number) =>
-  new Intl.NumberFormat("pt-MZ", { style: "currency", currency: "MZN" }).format(value);
+export const formatCurrency = (value: number | undefined | null) => {
+  const num = typeof value === "number" && !isNaN(value) ? value : 0;
+  return new Intl.NumberFormat("pt-MZ", { style: "currency", currency: "MZN" }).format(num);
+};
 
 interface ProductOrderInfo {
   codigo?: string;

@@ -5,6 +5,8 @@ import { SiteHeader } from "@/components/SiteHeader";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { db } from "@/lib/firebase";
+import { collection, onSnapshot } from "firebase/firestore";
 import {
   Search,
   Loader2,
@@ -36,38 +38,45 @@ const Index = () => {
     document.title = "Loja Translite — Compre por lote, lucre mais";
   }, []);
 
-  const fetchProducts = useCallback(async () => {
-    try {
-      const res = await fetch("/api/products");
-      if (!res.ok) throw new Error("Erro ao buscar produtos");
-      const data = await res.json();
-      setHasMore(false);
-      return data as Product[];
-    } catch {
-      setHasMore(false);
-      return MOCK_PRODUCTS;
-    }
-  }, []);
-
   useEffect(() => {
-    (async () => {
-      setLoading(true);
-      const list = await fetchProducts();
-      setProducts(list);
-      pageRef.current = 0;
-      setLoading(false);
-    })();
-  }, [fetchProducts]);
+    setLoading(true);
+    const productsCol = collection(db, "products");
+    const unsubscribe = onSnapshot(
+      productsCol,
+      (snapshot) => {
+        if (!snapshot.empty) {
+          const list: Product[] = [];
+          snapshot.forEach((docSnap) => {
+            list.push({ id: docSnap.id, ...docSnap.data() } as Product);
+          });
+          setProducts(list);
+        } else {
+          setProducts([]);
+        }
+        setHasMore(false);
+        setLoading(false);
+      },
+      () => {
+        fetch("/api/products")
+          .then((res) => (res.ok ? res.json() : []))
+          .then((data) => {
+            setProducts(Array.isArray(data) ? data : []);
+          })
+          .catch(() => setProducts([]))
+          .finally(() => {
+            setHasMore(false);
+            setLoading(false);
+          });
+      }
+    );
+
+    return () => unsubscribe();
+  }, []);
 
   const loadMore = useCallback(async () => {
     if (loadingMore || !hasMore) return;
-    setLoadingMore(true);
-    const list = await fetchProducts();
-    if (list.length > 0) {
-      setProducts(list);
-    }
     setLoadingMore(false);
-  }, [fetchProducts, hasMore, loadingMore]);
+  }, [hasMore, loadingMore]);
 
   useEffect(() => {
     if (!hasMore || loading) return;
