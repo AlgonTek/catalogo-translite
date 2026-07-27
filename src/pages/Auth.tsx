@@ -21,8 +21,8 @@ import { Loader2, Lock, Mail, Key, ShieldCheck } from "lucide-react";
 const Auth = () => {
   const navigate = useNavigate();
   const { session, loading, setAdminSession } = useAuth();
-  const [email, setEmail] = useState("comercial@translitelda.com");
-  const [password, setPassword] = useState("Admin2026#");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [resetting, setResetting] = useState(false);
 
@@ -35,9 +35,9 @@ const Auth = () => {
   }, [loading, session, navigate]);
 
   const handleDirectAccess = (targetEmail?: string) => {
-    const finalEmail = targetEmail || email || "comercial@translitelda.com";
+    const finalEmail = targetEmail || email || "admin@translitelda.com";
     setAdminSession(finalEmail);
-    toast.success(`Acesso concedido como Administrador (${finalEmail})!`);
+    toast.success(`Acesso concedido ao Painel Admin!`);
     navigate("/admin", { replace: true });
   };
 
@@ -59,41 +59,32 @@ const Auth = () => {
         const fbErr = err as FirebaseError;
         const code = fbErr?.code || "";
 
-        // Se o método Email/Senha estiver desativado no Firebase Console, ativamos o modo seguro
         if (code === "auth/operation-not-allowed" || code === "auth/admin-restricted-operation") {
-          console.warn("Email/Password desativado no Firebase Console, a utilizar sessão administrativa segura.");
+          console.warn("Email/Password desativado no Firebase Console, utilizando autenticação anónima com sessão local.");
           try {
             await signInAnonymously(auth);
           } catch {
-            // Ignora se anónimo também estiver desativado
+            // Ignora se anónimo desativado
           }
           handleDirectAccess(cleanEmail);
           return;
         }
 
-        // Se o utilizador não existir, tenta criar
-        if (code === "auth/user-not-found" || code === "auth/invalid-credential") {
+        if (code === "auth/user-not-found") {
           try {
             userCred = await createUserWithEmailAndPassword(auth, cleanEmail, password);
-            toast.success("Nova conta administrativa criada no Firebase!");
+            toast.success("Conta de administrador criada com sucesso!");
           } catch (createErr: unknown) {
             const createFbErr = createErr as FirebaseError;
-            const createCode = createFbErr?.code || "";
-
-            if (createCode === "auth/operation-not-allowed") {
-              handleDirectAccess(cleanEmail);
-              return;
-            } else if (password === "Admin2026#") {
-              // Master password fallback
+            if (createFbErr?.code === "auth/operation-not-allowed") {
               handleDirectAccess(cleanEmail);
               return;
             } else {
               throw createFbErr;
             }
           }
-        } else if (password === "Admin2026#") {
-          // Master password fallback para o sistema
-          handleDirectAccess(cleanEmail);
+        } else if (code === "auth/wrong-password" || code === "auth/invalid-credential") {
+          toast.error("Email ou senha incorretos. Por favor, tente novamente.");
           return;
         } else {
           throw fbErr;
@@ -124,9 +115,11 @@ const Auth = () => {
         handleDirectAccess(cleanEmail);
       }
     } catch (err: unknown) {
-      const error = err as Error;
-      if (password === "Admin2026#") {
-        handleDirectAccess(cleanEmail);
+      const error = err as FirebaseError;
+      if (error?.code === "auth/wrong-password" || error?.code === "auth/invalid-credential") {
+        toast.error("Email ou senha incorretos.");
+      } else if (error?.code === "auth/weak-password") {
+        toast.error("A senha deve conter no mínimo 6 caracteres.");
       } else {
         toast.error(error.message || "Erro de autenticação.");
       }
@@ -209,7 +202,7 @@ const Auth = () => {
               <Input
                 id="email"
                 type="email"
-                placeholder="comercial@translitelda.com"
+                placeholder="seu.email@exemplo.com"
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
