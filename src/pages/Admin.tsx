@@ -98,7 +98,7 @@ const Admin = () => {
       // 2. Delete from API
       const res = await fetch(`/api/products/${id}`, {
         method: "DELETE",
-        headers: { "X-User-Id": user?.uid || "admin-local-id" },
+        headers: { "X-User-Id": user?.uid || "" },
       });
       if (res.ok) {
         toast.success("Produto excluído");

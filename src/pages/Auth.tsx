@@ -3,12 +3,10 @@ import { useNavigate } from "react-router-dom";
 import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
-  signInAnonymously,
   sendPasswordResetEmail,
-  signInWithPopup,
   FirebaseError,
 } from "firebase/auth";
-import { auth, googleAuthProvider } from "@/lib/firebase";
+import { auth } from "@/lib/firebase";
 import { SiteHeader } from "@/components/SiteHeader";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -20,7 +18,7 @@ import { Loader2, Lock, Mail, Key, ShieldCheck } from "lucide-react";
 
 const Auth = () => {
   const navigate = useNavigate();
-  const { session, loading, setAdminSession } = useAuth();
+  const { user, loading } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -31,15 +29,10 @@ const Auth = () => {
   }, []);
 
   useEffect(() => {
-    if (!loading && session) navigate("/admin", { replace: true });
-  }, [loading, session, navigate]);
-
-  const handleDirectAccess = (targetEmail?: string) => {
-    const finalEmail = targetEmail || email || "admin@translitelda.com";
-    setAdminSession(finalEmail);
-    toast.success(`Acesso concedido ao Painel Admin!`);
-    navigate("/admin", { replace: true });
-  };
+    if (!loading && user) {
+      navigate("/admin", { replace: true });
+    }
+  }, [loading, user, navigate]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -59,29 +52,18 @@ const Auth = () => {
         const fbErr = err as FirebaseError;
         const code = fbErr?.code || "";
 
-        if (code === "auth/operation-not-allowed" || code === "auth/admin-restricted-operation") {
-          console.warn("Email/Password desativado no Firebase Console, utilizando autenticação anónima com sessão local.");
-          try {
-            await signInAnonymously(auth);
-          } catch {
-            // Ignora se anónimo desativado
-          }
-          handleDirectAccess(cleanEmail);
-          return;
-        }
-
         if (code === "auth/user-not-found") {
           try {
             userCred = await createUserWithEmailAndPassword(auth, cleanEmail, password);
-            toast.success("Conta de administrador criada com sucesso!");
+            toast.success("Conta de administrador criada e autenticada com sucesso!");
           } catch (createErr: unknown) {
             const createFbErr = createErr as FirebaseError;
-            if (createFbErr?.code === "auth/operation-not-allowed") {
-              handleDirectAccess(cleanEmail);
-              return;
+            if (createFbErr?.code === "auth/weak-password") {
+              toast.error("A senha deve conter no mínimo 6 caracteres.");
             } else {
-              throw createFbErr;
+              toast.error("Erro ao registrar utilizador no Firebase Auth.");
             }
+            return;
           }
         } else if (code === "auth/wrong-password" || code === "auth/invalid-credential") {
           toast.error("Email ou senha incorretos. Por favor, tente novamente.");
@@ -92,27 +74,7 @@ const Auth = () => {
       }
 
       if (userCred?.user) {
-        try {
-          await fetch("/api/auth/set-role", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "X-User-Id": userCred.user.uid,
-            },
-            body: JSON.stringify({
-              userId: userCred.user.uid,
-              email: userCred.user.email,
-              role: "admin",
-            }),
-          });
-        } catch (roleErr) {
-          console.warn("Erro ao registar papel no servidor:", roleErr);
-        }
-
-        setAdminSession(cleanEmail);
-        toast.success("Autenticado com sucesso no Painel Admin!");
-      } else {
-        handleDirectAccess(cleanEmail);
+        toast.success("Autenticado com sucesso via Firebase Auth!");
       }
     } catch (err: unknown) {
       const error = err as FirebaseError;
@@ -121,7 +83,7 @@ const Auth = () => {
       } else if (error?.code === "auth/weak-password") {
         toast.error("A senha deve conter no mínimo 6 caracteres.");
       } else {
-        toast.error(error.message || "Erro de autenticação.");
+        toast.error(error.message || "Erro de autenticação no Firebase.");
       }
     } finally {
       setSubmitting(false);
@@ -139,45 +101,9 @@ const Auth = () => {
       toast.success(`Link de redefinição enviado para ${email}! Verifique a caixa de entrada/spam.`);
     } catch (err: unknown) {
       const fbErr = err as FirebaseError;
-      if (fbErr?.code === "auth/operation-not-allowed") {
-        toast.info("A redefinição direta por email está desativada no Firebase Console. Utilize a senha padrão Admin2026#.");
-      } else {
-        toast.error(fbErr.message || "Erro ao solicitar redefinição de senha.");
-      }
+      toast.error(fbErr.message || "Erro ao solicitar redefinição de senha no Firebase.");
     } finally {
       setResetting(false);
-    }
-  }
-
-  async function handleGoogleSignIn() {
-    setSubmitting(true);
-    try {
-      const result = await signInWithPopup(auth, googleAuthProvider);
-      if (result.user) {
-        try {
-          await fetch("/api/auth/set-role", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "X-User-Id": result.user.uid,
-            },
-            body: JSON.stringify({
-              userId: result.user.uid,
-              email: result.user.email,
-              role: "admin",
-            }),
-          });
-        } catch (e) {
-          console.warn("Role update fallback:", e);
-        }
-        setAdminSession(result.user.email || "admin@translitelda.com");
-        toast.success(`Bem-vindo, ${result.user.displayName || "Admin"}!`);
-      }
-    } catch (err: unknown) {
-      const fbErr = err as FirebaseError;
-      toast.error(fbErr.message || "Falha ao entrar com conta Google.");
-    } finally {
-      setSubmitting(false);
     }
   }
 
@@ -191,7 +117,7 @@ const Auth = () => {
           </div>
           <h1 className="text-xl sm:text-2xl text-center font-extrabold tracking-tight">Painel Administrativo</h1>
           <p className="text-xs sm:text-sm text-center text-muted-foreground mb-6">
-            Translite Solutions — Gestão de Catálogo & Atacado
+            Translite Solutions — Autenticação via Firebase Auth
           </p>
 
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -253,5 +179,6 @@ const Auth = () => {
 };
 
 export default Auth;
+
 
 
