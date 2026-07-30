@@ -1,8 +1,7 @@
 import { useState, useEffect } from "react";
 import { z } from "zod";
 import { useAuth } from "@/hooks/useAuth";
-import { db } from "@/lib/firebase";
-import { doc, setDoc } from "firebase/firestore";
+import { useProductMutations } from "@/hooks/useProducts";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -57,7 +56,7 @@ interface Props {
 }
 
 export function ProductForm({ product, onSaved, onCancel }: Props) {
-  const { user } = useAuth();
+  const { saveProduct, saving } = useProductMutations();
   const initialImages = (() => {
     const arr = product?.imagens && product.imagens.length > 0
       ? [...product.imagens]
@@ -80,7 +79,6 @@ export function ProductForm({ product, onSaved, onCancel }: Props) {
   const [isCustomCategory, setIsCustomCategory] = useState<boolean>(
     Boolean(product?.categoria && !DEFAULT_CATEGORIES.includes(product.categoria))
   );
-  const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const MAX_IMAGES = 4;
 
@@ -193,49 +191,21 @@ export function ProductForm({ product, onSaved, onCancel }: Props) {
       ? validated.imagens
       : ["https://images.unsplash.com/photo-1581235720704-06d3acfcb36f?w=600&auto=format&fit=crop&q=80"];
 
-    setSaving(true);
     try {
       const payload = {
         ...validated,
+        id: product?.id,
         imagens: finalImagens,
         imagem_url: finalImagens[0],
       };
 
-      const url = product ? `/api/products/${product.id}` : "/api/products";
-      const method = product ? "PUT" : "POST";
+      await saveProduct(payload);
 
-      const productId = product?.id || payload.id || `prod_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
-      const payloadWithId = { ...payload, id: productId };
-
-      // Sync to Firestore
-      try {
-        const productRef = doc(db, "products", productId);
-        await setDoc(productRef, payloadWithId, { merge: true });
-      } catch (fsErr) {
-        console.warn("Aviso ao sincronizar produto no Firestore:", fsErr);
-      }
-
-      const res = await fetch(url, {
-        method,
-        headers: {
-          "Content-Type": "application/json",
-          "X-User-Id": user?.uid || "",
-        },
-        body: JSON.stringify(payloadWithId),
-      });
-
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || "Erro ao salvar no Cloud SQL");
-      }
-
-      toast.success(product ? "Produto atualizado" : "Produto criado");
+      toast.success(product ? "Produto atualizado com sucesso!" : "Produto criado com sucesso!");
       onSaved();
     } catch (e: unknown) {
       const err = e as Error;
-      toast.error(err.message ?? "Erro ao salvar");
-    } finally {
-      setSaving(false);
+      toast.error(err.message ?? "Erro ao salvar produto");
     }
   }
 

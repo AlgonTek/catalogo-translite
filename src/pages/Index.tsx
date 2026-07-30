@@ -1,105 +1,41 @@
-import { useEffect, useState, useMemo, useRef, useCallback } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { ProductCard } from "@/components/ProductCard";
 import { SiteHeader } from "@/components/SiteHeader";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { db } from "@/lib/firebase";
-import { collection, onSnapshot } from "firebase/firestore";
+import { useProducts } from "@/hooks/useProducts";
 import {
   Search,
-  Loader2,
   X,
   Sparkles,
   Tag,
   Layers,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
-import type { Product } from "@/types/product";
-import { MOCK_PRODUCTS } from "@/data/fallbackProducts";
 
-const PAGE_SIZE = 12;
+const PAGE_SIZE = 8;
 
 type SortOption = "relevancia" | "lucro_desc" | "preco_asc" | "preco_desc" | "nome_asc";
 
 const Index = () => {
-  const [products, setProducts] = useState<Product[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [hasMore, setHasMore] = useState(true);
+  const { products, loading } = useProducts();
   const [activeCategory, setActiveCategory] = useState<string>("Todos");
   const [demandFilter, setDemandFilter] = useState<string>("todos");
   const [sortBy, setSortBy] = useState<SortOption>("relevancia");
   const [search, setSearch] = useState("");
-  const pageRef = useRef(0);
-  const sentinelRef = useRef<HTMLDivElement | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
 
   useEffect(() => {
     document.title = "Loja Translite — Compre por lote, lucre mais";
   }, []);
 
+  // Reset page to 1 when filters change
   useEffect(() => {
-    setLoading(true);
-    const productsCol = collection(db, "products");
-    const unsubscribe = onSnapshot(
-      productsCol,
-      (snapshot) => {
-        if (!snapshot.empty) {
-          const list: Product[] = [];
-          snapshot.forEach((docSnap) => {
-            list.push({ id: docSnap.id, ...docSnap.data() } as Product);
-          });
-          setProducts(list);
-          setHasMore(false);
-          setLoading(false);
-        } else {
-          fetch("/api/products")
-            .then((res) => (res.ok ? res.json() : []))
-            .then((data) => {
-              setProducts(Array.isArray(data) ? data : []);
-            })
-            .catch(() => setProducts([]))
-            .finally(() => {
-              setHasMore(false);
-              setLoading(false);
-            });
-        }
-      },
-      () => {
-        fetch("/api/products")
-          .then((res) => (res.ok ? res.json() : []))
-          .then((data) => {
-            setProducts(Array.isArray(data) ? data : []);
-          })
-          .catch(() => setProducts([]))
-          .finally(() => {
-            setHasMore(false);
-            setLoading(false);
-          });
-      }
-    );
-
-    return () => unsubscribe();
-  }, []);
-
-  const loadMore = useCallback(async () => {
-    if (loadingMore || !hasMore) return;
-    setLoadingMore(false);
-  }, [hasMore, loadingMore]);
-
-  useEffect(() => {
-    if (!hasMore || loading) return;
-    const node = sentinelRef.current;
-    if (!node) return;
-    const obs = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting) loadMore();
-      },
-      { rootMargin: "400px" }
-    );
-    obs.observe(node);
-    return () => obs.disconnect();
-  }, [hasMore, loading, loadMore]);
+    setCurrentPage(1);
+  }, [search, activeCategory, demandFilter, sortBy]);
 
   const categories = useMemo(
     () => ["Todos", ...Array.from(new Set(products.map((p) => p.categoria)))],
@@ -137,6 +73,13 @@ const Index = () => {
       return 0;
     });
   }, [products, activeCategory, search, demandFilter, sortBy]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredAndSorted.length / PAGE_SIZE));
+  const safePage = Math.min(currentPage, totalPages);
+  const paginatedProducts = useMemo(() => {
+    const start = (safePage - 1) * PAGE_SIZE;
+    return filteredAndSorted.slice(start, start + PAGE_SIZE);
+  }, [filteredAndSorted, safePage]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -253,20 +196,64 @@ const Index = () => {
         ) : (
           <>
             <div className="flex items-center justify-between text-[11px] text-muted-foreground mb-3 font-medium">
-              <span>{filteredAndSorted.length} {filteredAndSorted.length === 1 ? "produto" : "produtos"}</span>
+              <span>
+                A mostrar {filteredAndSorted.length > 0 ? (safePage - 1) * PAGE_SIZE + 1 : 0} - {Math.min(safePage * PAGE_SIZE, filteredAndSorted.length)} de {filteredAndSorted.length} {filteredAndSorted.length === 1 ? "produto" : "produtos"}
+              </span>
+              <span>Página {safePage} de {totalPages}</span>
             </div>
 
-            <Grid>{filteredAndSorted.map((p) => <ProductCard key={p.id} product={p} />)}</Grid>
+            <Grid>{paginatedProducts.map((p) => <ProductCard key={p.id} product={p} />)}</Grid>
 
-            {hasMore && (
-              <div ref={sentinelRef} className="flex justify-center items-center py-8">
-                {loadingMore ? (
-                  <span className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <Loader2 className="w-4 h-4 animate-spin" /> A carregar mais…
-                  </span>
-                ) : (
-                  <span className="text-[11px] text-muted-foreground">Role para ver mais</span>
-                )}
+            {totalPages > 1 && (
+              <div className="flex flex-wrap items-center justify-between gap-3 mt-8 py-4 border-t border-border/40">
+                <button
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  disabled={safePage === 1}
+                  className="px-3.5 py-2 rounded-lg border border-border/60 text-xs font-semibold flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-muted/80 transition-colors"
+                  aria-label="Página Anterior"
+                >
+                  <ChevronLeft className="w-4 h-4" /> Anterior
+                </button>
+
+                <div className="flex items-center gap-1.5 overflow-x-auto py-1">
+                  {Array.from({ length: totalPages }).map((_, i) => {
+                    const pNum = i + 1;
+                    if (
+                      pNum === 1 ||
+                      pNum === totalPages ||
+                      (pNum >= safePage - 1 && pNum <= safePage + 1)
+                    ) {
+                      return (
+                        <button
+                          key={pNum}
+                          onClick={() => setCurrentPage(pNum)}
+                          className={`min-w-[32px] h-8 px-2 rounded-lg text-xs font-bold transition-all ${
+                            pNum === safePage
+                              ? "bg-primary text-primary-foreground shadow-xs"
+                              : "hover:bg-muted text-muted-foreground hover:text-foreground"
+                          }`}
+                        >
+                          {pNum}
+                        </button>
+                      );
+                    } else if (
+                      (pNum === 2 && safePage > 3) ||
+                      (pNum === totalPages - 1 && safePage < totalPages - 2)
+                    ) {
+                      return <span key={pNum} className="text-xs text-muted-foreground px-1">…</span>;
+                    }
+                    return null;
+                  })}
+                </div>
+
+                <button
+                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={safePage === totalPages}
+                  className="px-3.5 py-2 rounded-lg border border-border/60 text-xs font-semibold flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-muted/80 transition-colors"
+                  aria-label="Próxima Página"
+                >
+                  Seguinte <ChevronRight className="w-4 h-4" />
+                </button>
               </div>
             )}
           </>

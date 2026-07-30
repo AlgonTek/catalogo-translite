@@ -2,8 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { SiteHeader } from "@/components/SiteHeader";
 import { useAuth } from "@/hooks/useAuth";
-import { db } from "@/lib/firebase";
-import { collection, doc, deleteDoc, onSnapshot } from "firebase/firestore";
+import { useProducts, useProductMutations } from "@/hooks/useProducts";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -21,15 +20,15 @@ import {
 
 const Admin = () => {
   const navigate = useNavigate();
-  const { user, session, isAdmin, loading, signOut } = useAuth();
-  const [products, setProducts] = useState<Product[]>([]);
-  const [listLoading, setListLoading] = useState(true);
+  const { session, isAdmin, loading, signOut } = useAuth();
+  const { products, loading: listLoading } = useProducts();
+  const { deleteProduct } = useProductMutations();
   const [editing, setEditing] = useState<Product | null>(null);
   const [creating, setCreating] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
-  const PAGE_SIZE = 6;
+  const PAGE_SIZE = 8;
 
   useEffect(() => { document.title = "Admin — AtacadoPro"; }, []);
 
@@ -37,79 +36,19 @@ const Admin = () => {
     if (loading) return;
     if (!session && !isAdmin) {
       navigate("/auth", { replace: true });
-      return;
     }
-
-    setListLoading(true);
-
-    // Subscribe to Firestore real-time products collection
-    const productsCol = collection(db, "products");
-    const unsubscribe = onSnapshot(
-      productsCol,
-      (snapshot) => {
-        if (!snapshot.empty) {
-          const list: Product[] = [];
-          snapshot.forEach((docSnap) => {
-            list.push({ id: docSnap.id, ...docSnap.data() } as Product);
-          });
-          setProducts(list);
-          setListLoading(false);
-        } else {
-          loadProductsFromApi();
-        }
-      },
-      (error) => {
-        console.warn("Aviso ao conectar ao Firestore, a usar API de contingência:", error);
-        loadProductsFromApi();
-      }
-    );
-
-    return () => {
-      unsubscribe();
-    };
   }, [loading, session, isAdmin, navigate]);
-
-  async function loadProductsFromApi() {
-    setListLoading(true);
-    try {
-      const res = await fetch("/api/products");
-      if (res.ok) {
-        const data = await res.json();
-        setProducts(Array.isArray(data) ? (data as Product[]) : []);
-      } else {
-        setProducts([]);
-      }
-    } catch {
-      setProducts([]);
-    } finally {
-      setListLoading(false);
-    }
-  }
 
   async function handleDelete(id: string) {
     try {
-      // 1. Delete from Firestore
-      try {
-        await deleteDoc(doc(db, "products", id));
-      } catch (fsErr) {
-        console.warn("Erro ao deletar documento no Firestore:", fsErr);
-      }
-
-      // 2. Delete from API
-      const res = await fetch(`/api/products/${id}`, {
-        method: "DELETE",
-        headers: { "X-User-Id": user?.uid || "" },
-      });
-      if (res.ok) {
-        toast.success("Produto excluído");
-      } else {
-        const data = await res.json().catch(() => ({}));
-        toast.error(data.error || "Erro ao excluir produto");
-      }
-    } catch {
-      toast.error("Erro de conexão ao excluir");
+      await deleteProduct(id);
+      toast.success("Produto excluído com sucesso!");
+    } catch (err: unknown) {
+      const error = err as Error;
+      toast.error(error.message || "Erro de conexão ao excluir produto");
+    } finally {
+      setDeletingId(null);
     }
-    setDeletingId(null);
   }
 
   async function handleSignOut() {
@@ -249,13 +188,42 @@ const Admin = () => {
             </div>
 
             {totalPages > 1 && (
-              <div className="flex items-center justify-between gap-2 mt-5">
+              <div className="flex flex-wrap items-center justify-between gap-3 mt-5 py-3 border-t border-border/40">
                 <Button variant="outline" size="sm" disabled={currentPage === 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>
                   <ChevronLeft className="w-4 h-4 mr-1" /> Anterior
                 </Button>
-                <span className="text-xs text-muted-foreground">
-                  Página {currentPage} de {totalPages} · {filtered.length} produto(s)
-                </span>
+
+                <div className="flex items-center gap-1.5 overflow-x-auto py-1">
+                  {Array.from({ length: totalPages }).map((_, i) => {
+                    const pNum = i + 1;
+                    if (
+                      pNum === 1 ||
+                      pNum === totalPages ||
+                      (pNum >= currentPage - 1 && pNum <= currentPage + 1)
+                    ) {
+                      return (
+                        <button
+                          key={pNum}
+                          onClick={() => setPage(pNum)}
+                          className={`min-w-[32px] h-8 px-2 rounded-lg text-xs font-bold transition-all ${
+                            pNum === currentPage
+                              ? "bg-primary text-primary-foreground shadow-xs"
+                              : "hover:bg-muted text-muted-foreground hover:text-foreground border border-border/40"
+                          }`}
+                        >
+                          {pNum}
+                        </button>
+                      );
+                    } else if (
+                      (pNum === 2 && currentPage > 3) ||
+                      (pNum === totalPages - 1 && currentPage < totalPages - 2)
+                    ) {
+                      return <span key={pNum} className="text-xs text-muted-foreground px-1">…</span>;
+                    }
+                    return null;
+                  })}
+                </div>
+
                 <Button variant="outline" size="sm" disabled={currentPage === totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))}>
                   Seguinte <ChevronRight className="w-4 h-4 ml-1" />
                 </Button>
