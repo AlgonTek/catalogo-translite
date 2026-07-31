@@ -11,7 +11,7 @@ services:
   # 1. Serviço Web Principal (API Express + Frontend Vite Estático)
   # ----------------------------------------------------------------------------
   - type: web
-    name: loja-translite
+    name: catalogo-translite
     env: node
     plan: free # Você pode alterar para 'starter' ou superior em produção
     region: frankfurt # Opções: oregon, frankfurt, ohio, singapore
