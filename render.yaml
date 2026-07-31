@@ -1,0 +1,42 @@
+# ==============================================================================
+# RENDER BLUEPRINT - DEPLOY OFICIAL DA LOJA TRANSLITE (FULLSTACK NODE.JS + VITE)
+# ==============================================================================
+# Este arquivo configura o deploy automatizado via "Render Blueprint" (IaC) no
+# OnRender (render.com). Suporta o modo híbrido (REST + Firebase) ou com
+# banco de dados PostgreSQL grátis/gerenciado integrado no Render.
+# ==============================================================================
+
+services:
+  # ----------------------------------------------------------------------------
+  # 1. Serviço Web Principal (API Express + Frontend Vite Estático)
+  # ----------------------------------------------------------------------------
+  - type: web
+    name: loja-translite
+    env: node
+    plan: free # Você pode alterar para 'starter' ou superior em produção
+    region: frankfurt # Opções: oregon, frankfurt, ohio, singapore
+    buildCommand: npm ci && npm run build
+    startCommand: npm run start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3000
+      # Conexão automática com o banco PostgreSQL no Render (se habilitado abaixo)
+      - key: DATABASE_URL
+        fromDatabase:
+          name: loja-translite-db
+          property: connectionString
+      - key: DATABASE_SSL
+        value: "true"
+
+databases:
+  # ----------------------------------------------------------------------------
+  # 2. Banco de Dados PostgreSQL Gerenciado (Render Postgres)
+  # ----------------------------------------------------------------------------
+  - name: loja-translite-db
+    plan: free # Banco de dados gratuito de teste no Render (90 dias ou pago)
+    region: frankfurt
+    databaseName: lojatranslitedb
+    user: lojatransliteuser

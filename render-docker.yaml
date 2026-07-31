@@ -1,0 +1,32 @@
+# ==============================================================================
+# RENDER DOCKER BLUEPRINT - DEPLOY VIA DOCKER CONTAINER NO ONRENDER
+# ==============================================================================
+# Use este blueprint caso prefira implantar a Loja Translite utilizando nosso
+# Dockerfile otimizado multi-stage na plataforma Render.
+# ==============================================================================
+
+services:
+  - type: web
+    name: loja-translite-docker
+    env: docker
+    plan: free
+    region: frankfurt
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      # Se utilizar o banco de dados PostgreSQL integrado:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: loja-translite-db
+          property: connectionString
+      - key: DATABASE_SSL
+        value: "true"
+
+databases:
+  - name: loja-translite-db
+    plan: free
+    region: frankfurt
+    databaseName: lojatranslitedb
+    user: lojatransliteuser

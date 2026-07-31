@@ -7,6 +7,11 @@ import { products, userRoles, users } from "./src/db/schema.ts";
 import { eq, desc, count } from "drizzle-orm";
 import { MOCK_PRODUCTS } from "./src/data/fallbackProducts.ts";
 
+// Compatibilidade automática com Render / Supabase / Neon (onde DATABASE_URL é injetado automaticamente)
+if (process.env.DATABASE_URL && !process.env.SQL_HOST) {
+  process.env.SQL_HOST = process.env.DATABASE_URL;
+}
+
 const sanitizeString = (str: string) => str.trim().replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "");
 
 const productSchema = z.object({
@@ -51,9 +56,11 @@ function apiRateLimiter(maxRequests = 60, windowMs = 60 * 1000) {
   };
 }
 
+export const isDatabaseConfigured = () => Boolean(process.env.DATABASE_URL || process.env.SQL_HOST);
+
 async function checkIsAdmin(userId: string | undefined): Promise<boolean> {
   if (!userId || userId.trim() === "") return false;
-  if (!process.env.SQL_HOST) return true;
+  if (!isDatabaseConfigured()) return true;
   if (userId === "admin-local-id" || userId.startsWith("admin")) return true;
   try {
     const userRoleResult = await db.select().from(userRoles).where(eq(userRoles.userId, userId)).limit(1);
@@ -70,12 +77,56 @@ async function checkIsAdmin(userId: string | undefined): Promise<boolean> {
   }
 }
 
+// Google Cloud Structured Logging Helper (Cloud Logging format)
+export function gcpLog(
+  severity: "DEBUG" | "INFO" | "WARNING" | "ERROR" | "CRITICAL",
+  message: string,
+  meta: Record<string, unknown> = {}
+) {
+  const logEntry = {
+    severity,
+    message,
+    timestamp: new Date().toISOString(),
+    ...meta,
+  };
+  console.log(JSON.stringify(logEntry));
+}
+
 async function startServer() {
   const app = express();
-  const PORT = 3000;
+  const PORT = Number(process.env.PORT) || 3000;
 
   // Security: Disable express fingerprinting header
   app.disable("x-powered-by");
+
+  // Google Cloud Request Logging Middleware (com filtro de ruído de assets / Vite)
+  app.use((req, res, next) => {
+    const startTime = Date.now();
+    const traceHeader = req.headers["x-cloud-trace-context"];
+    res.on("finish", () => {
+      // Filtrar ruído de arquivos estáticos, node_modules e dependências de dev do Vite (quando statusCode < 400)
+      const isStaticOrViteAsset = /^(?:\/node_modules\/|\/@|\/src\/|\/public\/|.*\.(?:js|mjs|ts|tsx|css|map|ico|png|jpg|jpeg|svg|woff|woff2|json)(?:\?.*)?$)/i.test(req.originalUrl);
+      const isApiOrProbe = req.originalUrl.startsWith("/api/");
+
+      // Logar requisições de API/Probes, erros HTTP (>=400) ou acessos a páginas principais (sem ser asset estático)
+      if (!isStaticOrViteAsset || isApiOrProbe || res.statusCode >= 400) {
+        const latency = `${Date.now() - startTime}ms`;
+        const severity = res.statusCode >= 500 ? "ERROR" : res.statusCode >= 400 ? "WARNING" : "INFO";
+        gcpLog(severity, `HTTP ${req.method} ${req.originalUrl} - ${res.statusCode} (${latency})`, {
+          httpRequest: {
+            requestMethod: req.method,
+            requestUrl: req.originalUrl,
+            status: res.statusCode,
+            userAgent: req.headers["user-agent"] || "",
+            remoteIp: req.headers["x-forwarded-for"] || req.ip,
+            latency,
+          },
+          trace: traceHeader ? `projects/${process.env.GCP_PROJECT || "translite"}/traces/${String(traceHeader).split("/")[0]}` : undefined,
+        });
+      }
+    });
+    next();
+  });
 
   // Security: Global HTTP Headers Middleware
   app.use((req, res, next) => {
@@ -98,9 +149,29 @@ async function startServer() {
     next();
   });
 
-  // API Routes
-  app.get("/api/health", (req, res) => {
-    res.json({ status: "ok", timestamp: new Date().toISOString() });
+  // API Routes & Google Cloud Health / Readiness Probes
+  app.get(["/api/health", "/api/healthz", "/api/livez"], (req, res) => {
+    res.status(200).json({
+      status: "ok",
+      service: "loja-translite",
+      environment: process.env.NODE_ENV || "development",
+      timestamp: new Date().toISOString(),
+      uptime: process.uptime(),
+    });
+  });
+
+  app.get("/api/readyz", async (req, res) => {
+    try {
+      const isSqlConfigured = Boolean(process.env.SQL_HOST);
+      res.status(200).json({
+        status: "ready",
+        database: isSqlConfigured ? "CloudSQL_PostgreSQL" : "REST_Hybrid",
+        timestamp: new Date().toISOString(),
+      });
+    } catch (err: unknown) {
+      gcpLog("ERROR", "Readiness check falhou", { error: String(err) });
+      res.status(503).json({ status: "not_ready", error: String(err) });
+    }
   });
 
   // GET /api/categories
@@ -473,9 +544,28 @@ async function startServer() {
     });
   }
 
-  app.listen(PORT, "0.0.0.0", () => {
-    console.log(`Server running on http://0.0.0.0:${PORT}`);
+  const server = app.listen(PORT, "0.0.0.0", () => {
+    gcpLog("INFO", `Servidor rodando no Google Cloud Run / Container: http://0.0.0.0:${PORT}`, {
+      port: PORT,
+      nodeEnv: process.env.NODE_ENV || "development",
+    });
   });
+
+  // Graceful Shutdown para Google Cloud Run (sinais SIGTERM / SIGINT)
+  const handleShutdown = (signal: string) => {
+    gcpLog("INFO", `Sinal ${signal} recebido: Iniciando encerramento gracioso no Google Cloud...`);
+    server.close(() => {
+      gcpLog("INFO", "Servidor HTTP encerrado com sucesso. Containers finalizados.");
+      process.exit(0);
+    });
+    setTimeout(() => {
+      gcpLog("WARNING", "Encerramento forçado após timeout do sinal de término.");
+      process.exit(1);
+    }, 10000);
+  };
+
+  process.on("SIGTERM", () => handleShutdown("SIGTERM"));
+  process.on("SIGINT", () => handleShutdown("SIGINT"));
 }
 
 startServer();
