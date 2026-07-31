@@ -11,22 +11,24 @@ services:
   # 1. Serviço Web Principal (API Express + Frontend Vite Estático)
   # ----------------------------------------------------------------------------
   - type: web
-    name: catalogo-translite
+    name: loja-translite
     env: node
     plan: free # Você pode alterar para 'starter' ou superior em produção
-    region: ohio # Opções: oregon, frankfurt, ohio, singapore
-    buildCommand: npm ci && npm run build
+    region: frankfurt # Opções: oregon, frankfurt, ohio, singapore
+    buildCommand: npm install --include=dev && npm run build
     startCommand: npm run start
     healthCheckPath: /api/health
     envVars:
+      - key: NPM_CONFIG_PRODUCTION
+        value: "false"
       - key: NODE_ENV
         value: production
       - key: PORT
         value: 3000
       # Conexão automática com o banco PostgreSQL no Render (se habilitado abaixo)
-      - key: postgresql://lojatransliteuser:y4cBVSGphfccOi9GCRkpzD7rHO1VIRU3@dpg-d9mis3dbedkc73drr690-a/lojatranslitedb
+      - key: DATABASE_URL
         fromDatabase:
-          name: catalogo-translitedb
+          name: loja-translite-db
           property: connectionString
       - key: DATABASE_SSL
         value: "true"
@@ -35,8 +37,8 @@ databases:
   # ----------------------------------------------------------------------------
   # 2. Banco de Dados PostgreSQL Gerenciado (Render Postgres)
   # ----------------------------------------------------------------------------
-  - name: catalogo-translitedb
+  - name: loja-translite-db
     plan: free # Banco de dados gratuito de teste no Render (90 dias ou pago)
-    region: ohio
+    region: frankfurt
     databaseName: lojatranslitedb
     user: lojatransliteuser

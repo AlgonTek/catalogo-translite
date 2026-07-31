@@ -15,9 +15,10 @@ A aplicação foi preparada nativamente para rodar no Render cumprindo todos os 
 2. **Suporte Nativo a `DATABASE_URL` (PostgreSQL / Drizzle ORM):**
    - O Render gerencia bancos PostgreSQL provendo uma única URL de conexão (`DATABASE_URL = postgresql://user:pass@srv.render.com/db_name?sslmode=require`).
    - O pool de conexões do backend (`src/db/index.ts`) e a configuração do ORM (`drizzle.config.ts`) foram ajustados para detectar automaticamente `DATABASE_URL` e ativar SSL de produção sem necessidade de configurar variáveis individuais (`SQL_HOST`, `SQL_USER`, etc.).
-3. **Build Unificado Fullstack:**
-   - Comando de Build: `npm ci && npm run build` (compila o frontend Vite em `/dist` e o backend TypeScript em `/dist/server.cjs`).
-   - Comando de Start: `npm run start` (executa `node dist/server.cjs`).
+3. **Build Unificado Fullstack & Proteção contra Omissão de `devDependencies` no Render:**
+   - **Comando de Build:** `npm install --include=dev && npm run build`
+     - *Por que `--include=dev`?* Quando você configura `NODE_ENV=production` no Render, o npm por padrão ignora a instalação de `devDependencies` (`vite`, `esbuild`, `typescript`). O uso de `npm install --include=dev` (e da variável `NPM_CONFIG_PRODUCTION=false` em `render.yaml`) garante que as ferramentas de compilação sejam instaladas e o arquivo `dist/server.cjs` seja gerado com sucesso.
+   - **Comando de Start:** `npm run start` (executa `node dist/server.cjs`).
 
 ---
 
@@ -49,9 +50,10 @@ Caso prefira configurar manualmente sem o Blueprint:
    - **Name:** `loja-translite`
    - **Region:** *Frankfurt (EU)* ou *Oregon (US)*
    - **Environment:** `Node`
-   - **Build Command:** `npm ci && npm run build`
+   - **Build Command:** `npm install --include=dev && npm run build`
    - **Start Command:** `npm run start`
 4. Vá em **"Environment Variables" (Variáveis de Ambiente)** e adicione:
+   - `NPM_CONFIG_PRODUCTION` = `false` (obrigatório para que o npm instale o Vite e o esbuild no build do Render)
    - `NODE_ENV` = `production`
    - `DATABASE_URL` = `<Sua string de conexão PostgreSQL do Render, Supabase ou Neon>` (Opcional - se omitido, usará modo em memória/híbrido).
    - `DATABASE_SSL` = `true` (necessário para o Render Postgres).

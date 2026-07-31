@@ -19,10 +19,8 @@ import {
   Sparkles,
   Share2,
   ShoppingCart,
-  CheckCircle2,
 } from "lucide-react";
 import { formatCurrency, buildWhatsappLink } from "@/lib/whatsapp";
-import { getOptimizedImageUrl, getImageSrcSet } from "@/lib/image";
 import { BlurImage } from "@/components/BlurImage";
 import { ImageLightbox } from "@/components/ImageLightbox";
 import { shareProduct } from "@/lib/share";
