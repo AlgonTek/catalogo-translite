@@ -41,8 +41,15 @@ export class ApiProductRepository implements IProductRepository {
 
   async getProducts(): Promise<Product[]> {
     try {
-      const res = await fetch("/api/products");
+      const res = await fetch("/api/products", {
+        headers: { Accept: "application/json" },
+      });
       if (!res.ok) return [];
+      const contentType = res.headers.get("content-type");
+      if (!contentType || !contentType.includes("application/json")) {
+        console.warn("Retorno da API não é JSON:", contentType);
+        return [];
+      }
       const data = await res.json();
       return Array.isArray(data) ? (data as Product[]) : [];
     } catch (err) {

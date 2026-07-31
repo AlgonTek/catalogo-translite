@@ -529,6 +529,11 @@ async function startServer() {
     }
   });
 
+  // Garantir que requisições de API não tratadas retornem JSON (e nunca o index.html do SPA)
+  app.use("/api", (req, res) => {
+    res.status(404).json({ error: "Endpoint de API não encontrado", path: req.originalUrl });
+  });
+
   // Vite middleware setup
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({

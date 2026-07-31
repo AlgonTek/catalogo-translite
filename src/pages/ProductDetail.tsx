@@ -65,8 +65,11 @@ const ProductDetail = () => {
 
       // 2. Try REST API
       try {
-        const res = await fetch(`/api/products/${id}`);
-        if (res.ok) {
+        const res = await fetch(`/api/products/${id}`, {
+          headers: { Accept: "application/json" },
+        });
+        const contentType = res.headers.get("content-type");
+        if (res.ok && contentType && contentType.includes("application/json")) {
           const data = await res.json();
           if (data && data.nome) {
             setProduct(data as Product);

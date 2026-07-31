@@ -84,8 +84,11 @@ export function ProductForm({ product, onSaved, onCancel }: Props) {
   useEffect(() => {
     async function loadCategories() {
       try {
-        const res = await fetch("/api/categories");
-        if (res.ok) {
+        const res = await fetch("/api/categories", {
+          headers: { Accept: "application/json" },
+        });
+        const contentType = res.headers.get("content-type");
+        if (res.ok && contentType && contentType.includes("application/json")) {
           const data = await res.json();
           if (Array.isArray(data) && data.length > 0) {
             setCategoryList(data);

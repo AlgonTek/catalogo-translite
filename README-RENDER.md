@@ -17,8 +17,8 @@ A aplicação foi preparada nativamente para rodar no Render cumprindo todos os 
    - O pool de conexões do backend (`src/db/index.ts`) e a configuração do ORM (`drizzle.config.ts`) foram ajustados para detectar automaticamente `DATABASE_URL` e ativar SSL de produção sem necessidade de configurar variáveis individuais (`SQL_HOST`, `SQL_USER`, etc.).
 3. **Build Unificado Fullstack & Proteção contra Omissão de `devDependencies` no Render:**
    - **Comando de Build:** `npm install --include=dev && npm run build`
-     - *Por que `--include=dev`?* Quando você configura `NODE_ENV=production` no Render, o npm por padrão ignora a instalação de `devDependencies` (`vite`, `esbuild`, `typescript`). O uso de `npm install --include=dev` (e da variável `NPM_CONFIG_PRODUCTION=false` em `render.yaml`) garante que as ferramentas de compilação sejam instaladas e o arquivo `dist/server.cjs` seja gerado com sucesso.
-   - **Comando de Start:** `npm run start` (executa `node dist/server.cjs`).
+     - *Por que `--include=dev`?* Quando você configura `NODE_ENV=production` no Render, o npm por padrão ignora a instalação de `devDependencies` (`vite`, `esbuild`, `typescript`). O uso de `npm install --include=dev` (e da variável `NPM_CONFIG_PRODUCTION=false` em `render.yaml`) garante que as ferramentas de compilação sejam instaladas e o arquivo `dist/server.js` seja gerado com sucesso.
+   - **Comando de Start:** `npm run start` (executa `node dist/server.js || node server.js`, que suporta execução do backend compilado em `dist/server.js` ou fallback em raiz pelo `server.js`).
 
 ---
 
