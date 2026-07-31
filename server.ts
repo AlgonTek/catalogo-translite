@@ -524,7 +524,7 @@ async function startServer() {
         }
       }
       res.json({ role: "admin" });
-    } catch (error: unknown) {
+    } catch (_error: unknown) {
       res.json({ role: "admin" });
     }
   });

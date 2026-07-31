@@ -6,7 +6,6 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { ShoppingCart, Trash2, Plus, Minus, MessageCircle, Sparkles, PackageCheck, FileText } from "lucide-react";
 import { useQuoteCart } from "@/context/QuoteCartContext";

@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { z } from "zod";
-import { useAuth } from "@/hooks/useAuth";
 import { useProductMutations } from "@/hooks/useProducts";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Card } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, Upload, X, Plus, Calculator, TrendingUp, Sparkles, Check, ArrowLeftRight } from "lucide-react";
+import { Loader2, Upload, X, Calculator, TrendingUp, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import type { Product, DemandLevel } from "@/types/product";
 
